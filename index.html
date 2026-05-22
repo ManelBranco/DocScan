@@ -144,6 +144,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-full { grid-column: 1/-1; }
 .field { display: flex; flex-direction: column; gap: 6px; }
+.company-supplier-row { display: grid; grid-template-columns: 3fr 1fr; gap: 14px; }
 .field label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .9px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
 .field-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .field input, .field textarea {
@@ -331,9 +332,15 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
         <div class="card-body">
           <div class="form-grid">
-            <div class="field form-full">
-              <label><span class="field-dot" style="background:#06b6d4"></span>🏢 Nome da Empresa / Fornecedor</label>
-              <input type="text" id="f_company" autocomplete="new-password" spellcheck="false" placeholder="Nome da empresa…" readonly onfocus="this.removeAttribute('readonly')">
+            <div class="form-full company-supplier-row">
+              <div class="field">
+                <label><span class="field-dot" style="background:#06b6d4"></span>🏢 Nome da Empresa / Fornecedor</label>
+                <input type="text" id="f_company" autocomplete="new-password" spellcheck="false" placeholder="Nome da empresa…" readonly onfocus="this.removeAttribute('readonly')">
+              </div>
+              <div class="field">
+                <label><span class="field-dot" style="background:#06b6d4"></span>🏦 NIF da Empresa</label>
+                <input type="text" id="f_company_nif" autocomplete="new-password" spellcheck="false" placeholder="PT 123456789" readonly onfocus="this.removeAttribute('readonly')">
+              </div>
             </div>
             <div class="field form-full">
               <label><span class="field-dot" style="background:#8b5cf6"></span>📍 Morada</label>
@@ -371,10 +378,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             <div class="field">
               <label><span class="field-dot" style="background:var(--red)"></span>⏰ Vencimento</label>
               <input type="text" id="f_inv_due" autocomplete="off" spellcheck="false" placeholder="DD/MM/AAAA" readonly onfocus="this.removeAttribute('readonly')">
-            </div>
-            <div class="field">
-              <label><span class="field-dot" style="background:var(--purple)"></span>🏛️ NIF Fornecedor</label>
-              <input type="text" id="f_inv_nif_forn" autocomplete="off" spellcheck="false" placeholder="PT 123456789" readonly onfocus="this.removeAttribute('readonly')">
             </div>
           </div>
 
@@ -689,11 +692,12 @@ Rules:
     currentDocType = obj.doc_type === 'fatura' ? 'fatura' : 'contacto';
 
     // Unlock and populate contact fields
-    ['f_company','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
-    document.getElementById('f_company').value = obj.company || '';
-    document.getElementById('f_address').value = obj.address || '';
-    document.getElementById('f_email').value   = obj.email   || '';
-    document.getElementById('f_phone').value   = obj.phone   || '';
+    ['f_company','f_company_nif','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
+    document.getElementById('f_company').value     = obj.company        || '';
+    document.getElementById('f_company_nif').value = obj.nif_fornecedor || '';
+    document.getElementById('f_address').value     = obj.address        || '';
+    document.getElementById('f_email').value       = obj.email          || '';
+    document.getElementById('f_phone').value       = obj.phone          || '';
 
     // Show doc type badge
     const badge = document.getElementById('docTypeBadge');
@@ -703,11 +707,10 @@ Rules:
       badge.textContent = '🧾 Fatura';
       // Show and populate invoice card
       document.getElementById('invoiceCard').style.display = '';
-      ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
+      ['f_inv_number','f_inv_date','f_inv_due','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
       document.getElementById('f_inv_number').value     = obj.invoice_number  || '';
       document.getElementById('f_inv_date').value       = obj.invoice_date    || '';
       document.getElementById('f_inv_due').value        = obj.due_date        || '';
-      document.getElementById('f_inv_nif_forn').value   = obj.nif_fornecedor  || '';
       document.getElementById('f_inv_client').value     = obj.client_name     || '';
       document.getElementById('f_inv_client_nif').value = obj.client_nif      || '';
       document.getElementById('f_inv_client_addr').value= obj.client_address  || '';
@@ -800,12 +803,12 @@ function fmtEur(v) {
 
 // ── Form ───────────────────────────────────────────────────────────────────
 function resetForm() {
-  ['f_company','f_address','f_email','f_phone'].forEach(id => {
+  ['f_company','f_company_nif','f_address','f_email','f_phone'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
     el.setAttribute('readonly', true);
   });
-  const invFields = ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'];
+  const invFields = ['f_inv_number','f_inv_date','f_inv_due','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'];
   invFields.forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
@@ -842,7 +845,8 @@ function handleSave() {
     showStatus('error', '✗ Preencha pelo menos um campo antes de guardar.'); return;
   }
 
-  const base = { company, address, email, phone };
+  const nif_fornecedor = document.getElementById('f_company_nif').value.trim();
+  const base = { company, address, email, phone, nif_fornecedor };
 
   let invData = {};
   if (currentDocType === 'fatura') {
@@ -851,7 +855,6 @@ function handleSave() {
       invoice_number:  document.getElementById('f_inv_number').value.trim(),
       invoice_date:    document.getElementById('f_inv_date').value.trim(),
       due_date:        document.getElementById('f_inv_due').value.trim(),
-      nif_fornecedor:  document.getElementById('f_inv_nif_forn').value.trim(),
       client_name:     document.getElementById('f_inv_client').value.trim(),
       client_nif:      document.getElementById('f_inv_client_nif').value.trim(),
       client_address:  document.getElementById('f_inv_client_addr').value.trim(),
@@ -1002,11 +1005,12 @@ function editRecord(id) {
   editId = id;
   currentDocType = r.doc_type === 'fatura' ? 'fatura' : 'contacto';
 
-  ['f_company','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
-  document.getElementById('f_company').value = r.company || '';
-  document.getElementById('f_address').value = r.address || '';
-  document.getElementById('f_email').value   = r.email   || '';
-  document.getElementById('f_phone').value   = r.phone   || '';
+  ['f_company','f_company_nif','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
+  document.getElementById('f_company').value     = r.company        || '';
+  document.getElementById('f_company_nif').value = r.nif_fornecedor || '';
+  document.getElementById('f_address').value     = r.address        || '';
+  document.getElementById('f_email').value       = r.email          || '';
+  document.getElementById('f_phone').value       = r.phone          || '';
 
   const badge = document.getElementById('docTypeBadge');
   badge.style.display = '';
@@ -1015,11 +1019,10 @@ function editRecord(id) {
     badge.className = 'doc-type-badge fatura';
     badge.textContent = '🧾 Fatura';
     document.getElementById('invoiceCard').style.display = '';
-    ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(fid => document.getElementById(fid).removeAttribute('readonly'));
+    ['f_inv_number','f_inv_date','f_inv_due','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(fid => document.getElementById(fid).removeAttribute('readonly'));
     document.getElementById('f_inv_number').value      = r.invoice_number  || '';
     document.getElementById('f_inv_date').value        = r.invoice_date    || '';
     document.getElementById('f_inv_due').value         = r.due_date        || '';
-    document.getElementById('f_inv_nif_forn').value    = r.nif_fornecedor  || '';
     document.getElementById('f_inv_client').value      = r.client_name     || '';
     document.getElementById('f_inv_client_nif').value  = r.client_nif      || '';
     document.getElementById('f_inv_client_addr').value = r.client_address  || '';
