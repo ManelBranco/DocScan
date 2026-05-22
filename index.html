@@ -205,6 +205,37 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+/* ── Invoice styles ── */
+.doc-type-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; font-family: var(--mono); text-transform: uppercase; }
+.doc-type-badge.fatura  { background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.4); color: var(--amber); }
+.doc-type-badge.contacto { background: rgba(6,182,212,.15); border: 1px solid rgba(6,182,212,.4); color: var(--accent2); }
+
+.inv-section { margin-top: 4px; }
+.inv-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .9px; color: var(--text2); display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+
+.items-table { width: 100%; border-collapse: collapse; }
+.items-table th { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text2); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); white-space: nowrap; }
+.items-table td { padding: 4px 6px; border-bottom: 1px solid var(--surface); vertical-align: middle; }
+.items-table td input {
+  background: transparent; border: 1px solid transparent; border-radius: 5px;
+  color: var(--text); font-family: var(--mono); font-size: 12px;
+  padding: 5px 7px; width: 100%; outline: none; transition: border-color .15s, background .15s;
+}
+.items-table td input:focus { border-color: var(--accent); background: var(--surface2); }
+.items-table td input[readonly] { color: var(--accent2); }
+.del-row { background: none; border: none; color: var(--text2); cursor: pointer; padding: 4px 8px; border-radius: 4px; font-size: 13px; transition: color .15s, background .15s; }
+.del-row:hover { color: var(--red); background: rgba(239,68,68,.1); }
+
+.inv-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; margin-top: 14px; padding: 14px 18px; background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); }
+.inv-total-row { display: flex; gap: 24px; align-items: center; font-size: 13px; }
+.inv-total-row .t-label { color: var(--text2); min-width: 130px; text-align: right; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+.inv-total-row .t-value { font-family: var(--mono); font-size: 13px; min-width: 100px; text-align: right; }
+.inv-total-row.grand { font-size: 15px; font-weight: 800; color: var(--accent2); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.inv-total-row.grand .t-label { color: var(--accent2); font-size: 13px; }
+.inv-total-row.grand .t-value { font-size: 16px; }
+
+.inv-separator { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 </style>
 </head>
 <body>
@@ -239,9 +270,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="sidebar-footer">
       <p>
         Arraste <strong>PDFs</strong> ou <strong>imagens</strong> para a área de captura.<br><br>
-        A IA extrai automaticamente:<br>
-        🏢 Empresa · 📍 Morada<br>
-        ✉️ Email · 📞 Telefone<br><br>
+        A IA detecta automaticamente:<br>
+        🏢 Contactos · 🧾 Faturas<br><br>
+        Faturas: extrai <strong>artigos, IVA,<br>quantidades e totais</strong>.<br><br>
         Exporte em <strong>CSV, JSON, vCard ou SQL</strong>.
       </p>
     </div>
@@ -285,10 +316,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <!-- Status -->
       <div class="statusbar scanning" id="statusBox" style="display:none"></div>
 
-      <!-- Form -->
+      <!-- Contact form -->
       <div class="card">
         <div class="card-head">
           <h2>📝 Dados Extraídos</h2>
+          <span class="doc-type-badge contacto" id="docTypeBadge" style="display:none"></span>
           <div class="card-actions">
             <button class="btn btn-ghost btn-sm" onclick="clearForm()">✕ Limpar</button>
             <button class="btn btn-success" id="saveBtn" onclick="handleSave()">＋ Guardar Registo</button>
@@ -297,7 +329,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div class="card-body">
           <div class="form-grid">
             <div class="field form-full">
-              <label><span class="field-dot" style="background:#06b6d4"></span>🏢 Nome da Empresa / Organização</label>
+              <label><span class="field-dot" style="background:#06b6d4"></span>🏢 Nome da Empresa / Fornecedor</label>
               <input type="text" id="f_company" autocomplete="new-password" spellcheck="false" placeholder="Nome da empresa…" readonly onfocus="this.removeAttribute('readonly')">
             </div>
             <div class="field form-full">
@@ -315,6 +347,100 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           </div>
         </div>
       </div>
+
+      <!-- Invoice card (shown only when doc_type === 'fatura') -->
+      <div class="card" id="invoiceCard" style="display:none">
+        <div class="card-head">
+          <h2>🧾 Dados da Fatura</h2>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Invoice header -->
+          <div class="form-grid">
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--amber)"></span>🔢 Nº Fatura</label>
+              <input type="text" id="f_inv_number" autocomplete="off" spellcheck="false" placeholder="FT 2024/001" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--amber)"></span>📅 Data Fatura</label>
+              <input type="text" id="f_inv_date" autocomplete="off" spellcheck="false" placeholder="DD/MM/AAAA" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--red)"></span>⏰ Vencimento</label>
+              <input type="text" id="f_inv_due" autocomplete="off" spellcheck="false" placeholder="DD/MM/AAAA" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--purple)"></span>🏛️ NIF Fornecedor</label>
+              <input type="text" id="f_inv_nif_forn" autocomplete="off" spellcheck="false" placeholder="PT 123456789" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+          </div>
+
+          <hr class="inv-separator">
+
+          <!-- Client -->
+          <div class="form-grid">
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--green)"></span>👤 Cliente</label>
+              <input type="text" id="f_inv_client" autocomplete="off" spellcheck="false" placeholder="Nome do cliente…" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+            <div class="field">
+              <label><span class="field-dot" style="background:var(--green)"></span>🏛️ NIF Cliente</label>
+              <input type="text" id="f_inv_client_nif" autocomplete="off" spellcheck="false" placeholder="PT 987654321" readonly onfocus="this.removeAttribute('readonly')">
+            </div>
+            <div class="field form-full">
+              <label><span class="field-dot" style="background:var(--green)"></span>📍 Morada Cliente</label>
+              <textarea id="f_inv_client_addr" autocomplete="off" spellcheck="false" placeholder="Morada do cliente…" rows="2" readonly onfocus="this.removeAttribute('readonly')"></textarea>
+            </div>
+          </div>
+
+          <hr class="inv-separator">
+
+          <!-- Items table -->
+          <div class="inv-section">
+            <div class="inv-section-label">📦 Artigos / Serviços</div>
+            <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th style="width:38%">Descrição</th>
+                    <th style="width:10%;text-align:right">Qtd</th>
+                    <th style="width:14%;text-align:right">Preço Unit.</th>
+                    <th style="width:10%;text-align:right">IVA %</th>
+                    <th style="width:14%;text-align:right">Total c/ IVA</th>
+                    <th style="width:6%"></th>
+                  </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+              </table>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addItemRow()">＋ Adicionar Linha</button>
+          </div>
+
+          <!-- Totals -->
+          <div class="inv-totals">
+            <div class="inv-total-row">
+              <span class="t-label">Subtotal (s/ IVA)</span>
+              <span class="t-value" id="f_subtotal">0,00 €</span>
+            </div>
+            <div class="inv-total-row">
+              <span class="t-label">Total IVA</span>
+              <span class="t-value" id="f_total_iva">0,00 €</span>
+            </div>
+            <div class="inv-total-row grand">
+              <span class="t-label">Total a Pagar</span>
+              <span class="t-value" id="f_total">0,00 €</span>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="field">
+            <label><span class="field-dot" style="background:var(--text2)"></span>📝 Notas</label>
+            <textarea id="f_inv_notas" autocomplete="off" spellcheck="false" placeholder="Notas adicionais…" rows="2" readonly onfocus="this.removeAttribute('readonly')"></textarea>
+          </div>
+
+        </div>
+      </div>
+
     </div>
 
     <!-- RECORDS -->
@@ -350,10 +476,11 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 // ── State ──────────────────────────────────────────────────────────────────
 let records = [];
-let currentFileB64 = null;   // base64 of image or first PDF page
-let currentFileType = null;  // 'image' | 'pdf'
+let currentFileB64 = null;
+let currentFileType = null;
 let currentFileName = '';
 let currentPdfPages = 0;
+let currentDocType = 'contacto';
 let editId = null;
 let ollamaUrl = 'http://localhost:11434';
 
@@ -444,7 +571,6 @@ async function processImage(file) {
         canvas.height = img.height * scale;
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
         currentFileB64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
-        // Show preview
         showImagePreview(e.target.result);
         await doExtract(currentFileB64);
         res();
@@ -461,7 +587,6 @@ async function processPDF(file) {
   try {
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     currentPdfPages = pdf.numPages;
-    // Render first page to canvas for preview + extraction
     const page = await pdf.getPage(1);
     const viewport = page.getViewport({ scale: 2.0 });
     const canvas = document.createElement('canvas');
@@ -469,7 +594,6 @@ async function processPDF(file) {
     canvas.height = viewport.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
     currentFileB64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
-    // Show PDF preview
     showPDFPreview(file.name, currentPdfPages);
     await doExtract(currentFileB64);
   } catch(err) {
@@ -516,9 +640,17 @@ function resetFile() {
 async function doExtract(b64) {
   showStatus('scanning', '<span class="spin">⚙️</span> A extrair dados com IA (Ollama)…');
 
-  const prompt = `Analyze this document image carefully and extract ONLY these 4 fields. Return ONLY a raw JSON object with no markdown, no explanation, no thinking tags:
-{"company":"exact company or organization name as written","address":"full postal address including street, number, city, postal code","email":"email address","phone":"phone or mobile number"}
-Rules: use "" for missing fields. Do not invent data. Extract exactly what is printed.`;
+  const prompt = `Analyze this document image carefully. Determine if it is a "fatura" (invoice, receipt, bill, nota de débito) or a "contacto" (business card, letterhead, contact document).
+
+Return ONLY a raw JSON object — no markdown, no explanation, no thinking tags:
+
+{"doc_type":"fatura OR contacto","company":"supplier or company name","address":"supplier address","email":"email","phone":"phone","nif_fornecedor":"supplier VAT/NIF tax number","client_name":"buyer or client name","client_address":"client full address","client_nif":"client VAT/NIF tax number","invoice_number":"invoice reference number","invoice_date":"DD/MM/YYYY","due_date":"DD/MM/YYYY","items":[{"descricao":"product or service description","quantidade":1,"preco_unit":0.00,"iva_pct":23,"total":0.00}],"subtotal":0.00,"total_iva":0.00,"total":0.00,"notas":""}
+
+Rules:
+- Use "" for missing string fields, 0 for missing numbers, [] for missing item arrays.
+- For "contacto" documents, leave all invoice-specific fields empty/zero.
+- For "fatura" documents, extract ALL line items found in the document.
+- Do not invent data. Extract exactly what is printed.`;
 
   try {
     const res = await fetch(`${ollamaUrl}/api/chat`, {
@@ -550,17 +682,117 @@ Rules: use "" for missing fields. Do not invent data. Extract exactly what is pr
       .replace(/```json|```/g, '')
       .trim();
     const obj = JSON.parse(raw);
+
+    currentDocType = obj.doc_type === 'fatura' ? 'fatura' : 'contacto';
+
+    // Unlock and populate contact fields
     ['f_company','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
     document.getElementById('f_company').value = obj.company || '';
     document.getElementById('f_address').value = obj.address || '';
     document.getElementById('f_email').value   = obj.email   || '';
     document.getElementById('f_phone').value   = obj.phone   || '';
-    const n = [obj.company,obj.address,obj.email,obj.phone].filter(Boolean).length;
-    showStatus('ok', `✓ ${n} campo(s) extraído(s) com sucesso! Confirme os dados e clique Guardar Registo.`);
+
+    // Show doc type badge
+    const badge = document.getElementById('docTypeBadge');
+    badge.style.display = '';
+    if (currentDocType === 'fatura') {
+      badge.className = 'doc-type-badge fatura';
+      badge.textContent = '🧾 Fatura';
+      // Show and populate invoice card
+      document.getElementById('invoiceCard').style.display = '';
+      ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
+      document.getElementById('f_inv_number').value     = obj.invoice_number  || '';
+      document.getElementById('f_inv_date').value       = obj.invoice_date    || '';
+      document.getElementById('f_inv_due').value        = obj.due_date        || '';
+      document.getElementById('f_inv_nif_forn').value   = obj.nif_fornecedor  || '';
+      document.getElementById('f_inv_client').value     = obj.client_name     || '';
+      document.getElementById('f_inv_client_nif').value = obj.client_nif      || '';
+      document.getElementById('f_inv_client_addr').value= obj.client_address  || '';
+      document.getElementById('f_inv_notas').value      = obj.notas           || '';
+      renderItemsTable(obj.items || []);
+      // Override totals from AI if present, otherwise use recalculated
+      if (obj.subtotal || obj.total_iva || obj.total) {
+        document.getElementById('f_subtotal').textContent  = fmtEur(obj.subtotal);
+        document.getElementById('f_total_iva').textContent = fmtEur(obj.total_iva);
+        document.getElementById('f_total').textContent     = fmtEur(obj.total);
+      }
+    } else {
+      badge.className = 'doc-type-badge contacto';
+      badge.textContent = '👤 Contacto';
+      document.getElementById('invoiceCard').style.display = 'none';
+    }
+
+    const filled = [obj.company,obj.address,obj.email,obj.phone].filter(Boolean).length;
+    const invInfo = currentDocType === 'fatura' ? ` · ${(obj.items||[]).length} artigo(s) extraído(s)` : '';
+    showStatus('ok', `✓ Documento identificado: <strong>${currentDocType}</strong>. ${filled} campo(s) extraído(s)${invInfo}. Confirme e clique Guardar.`);
+
   } catch(err) {
     updateApiDot(false);
     showStatus('warn', '⚠️ Não foi possível ligar ao Ollama. Verifique se o serviço está a correr em ' + ollamaUrl + ' ou preencha manualmente.');
   }
+}
+
+// ── Invoice items ──────────────────────────────────────────────────────────
+function renderItemsTable(items) {
+  document.getElementById('itemsBody').innerHTML = '';
+  if (!items || items.length === 0) {
+    addItemRow(null);
+  } else {
+    items.forEach(item => addItemRow(item));
+  }
+  recalcTotals();
+}
+
+function addItemRow(item) {
+  const tbody = document.getElementById('itemsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Descrição do produto/serviço" value="${esc(item?.descricao||'')}" oninput="recalcTotals()"></td>
+    <td><input type="number" placeholder="1" value="${item?.quantidade||''}" min="0" step="0.001" oninput="recalcTotals()" style="text-align:right"></td>
+    <td><input type="number" placeholder="0.00" value="${item?.preco_unit||''}" min="0" step="0.01" oninput="recalcTotals()" style="text-align:right"></td>
+    <td><input type="number" placeholder="23" value="${item?.iva_pct??''}" min="0" max="100" step="0.5" oninput="recalcTotals()" style="text-align:right"></td>
+    <td><input type="number" placeholder="0.00" value="${item?.total||''}" min="0" step="0.01" style="text-align:right" readonly tabindex="-1"></td>
+    <td style="text-align:center"><button class="del-row" onclick="this.closest('tr').remove();recalcTotals()" title="Remover">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function recalcTotals() {
+  const rows = document.querySelectorAll('#itemsBody tr');
+  let subtotal = 0, totalIva = 0;
+  rows.forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const qty       = parseFloat(inputs[1].value) || 0;
+    const unitPrice = parseFloat(inputs[2].value) || 0;
+    const ivaPct    = parseFloat(inputs[3].value) || 0;
+    const lineBase  = qty * unitPrice;
+    const lineIva   = lineBase * ivaPct / 100;
+    const lineTotal = lineBase + lineIva;
+    inputs[4].value = lineTotal > 0 ? lineTotal.toFixed(2) : '';
+    subtotal  += lineBase;
+    totalIva  += lineIva;
+  });
+  document.getElementById('f_subtotal').textContent  = fmtEur(subtotal);
+  document.getElementById('f_total_iva').textContent = fmtEur(totalIva);
+  document.getElementById('f_total').textContent     = fmtEur(subtotal + totalIva);
+}
+
+function getItemsData() {
+  const rows = document.querySelectorAll('#itemsBody tr');
+  return Array.from(rows).map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return {
+      descricao:  inputs[0].value.trim(),
+      quantidade: parseFloat(inputs[1].value) || 0,
+      preco_unit: parseFloat(inputs[2].value) || 0,
+      iva_pct:    parseFloat(inputs[3].value) || 0,
+      total:      parseFloat(inputs[4].value) || 0
+    };
+  }).filter(i => i.descricao || i.quantidade || i.preco_unit);
+}
+
+function fmtEur(v) {
+  return (parseFloat(v) || 0).toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 // ── Form ───────────────────────────────────────────────────────────────────
@@ -570,6 +802,19 @@ function resetForm() {
     el.value = '';
     el.setAttribute('readonly', true);
   });
+  const invFields = ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'];
+  invFields.forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+    el.setAttribute('readonly', true);
+  });
+  document.getElementById('itemsBody').innerHTML = '';
+  document.getElementById('f_subtotal').textContent  = '0,00 €';
+  document.getElementById('f_total_iva').textContent = '0,00 €';
+  document.getElementById('f_total').textContent     = '0,00 €';
+  document.getElementById('invoiceCard').style.display = 'none';
+  document.getElementById('docTypeBadge').style.display = 'none';
+  currentDocType = 'contacto';
   editId = null;
   document.getElementById('saveBtn').textContent = '＋ Guardar Registo';
 }
@@ -593,15 +838,38 @@ function handleSave() {
   if (!company && !email && !phone && !address) {
     showStatus('error', '✗ Preencha pelo menos um campo antes de guardar.'); return;
   }
+
+  const base = { company, address, email, phone };
+
+  let invData = {};
+  if (currentDocType === 'fatura') {
+    invData = {
+      doc_type:        'fatura',
+      invoice_number:  document.getElementById('f_inv_number').value.trim(),
+      invoice_date:    document.getElementById('f_inv_date').value.trim(),
+      due_date:        document.getElementById('f_inv_due').value.trim(),
+      nif_fornecedor:  document.getElementById('f_inv_nif_forn').value.trim(),
+      client_name:     document.getElementById('f_inv_client').value.trim(),
+      client_nif:      document.getElementById('f_inv_client_nif').value.trim(),
+      client_address:  document.getElementById('f_inv_client_addr').value.trim(),
+      notas:           document.getElementById('f_inv_notas').value.trim(),
+      items:           getItemsData(),
+      subtotal:        parseFloat(document.getElementById('f_subtotal').textContent) || 0,
+      total_iva:       parseFloat(document.getElementById('f_total_iva').textContent) || 0,
+      total:           parseFloat(document.getElementById('f_total').textContent) || 0
+    };
+  } else {
+    invData = { doc_type: 'contacto' };
+  }
+
   if (editId !== null) {
-    records = records.map(r => r.id === editId ? {...r, company, address, email, phone} : r);
+    records = records.map(r => r.id === editId ? { ...r, ...base, ...invData } : r);
     showToast('✅ Registo atualizado!'); editId = null;
   } else {
-    records.unshift({ id: Date.now(), company, address, email, phone, ts: Date.now(), source: currentFileName });
+    records.unshift({ id: Date.now(), ...base, ...invData, ts: Date.now(), source: currentFileName });
     showToast('✅ Registo guardado!');
   }
   saveRecords(); resetForm(); hideStatus();
-  // navigate to records
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('panel-records').classList.add('active');
@@ -617,6 +885,77 @@ function renderRecords() {
     el.innerHTML = `<div class="empty-state"><div class="em-ico">🗂️</div><p>Sem registos ainda.<br>Vá a <strong>Capturar Documento</strong> para começar.</p></div>`;
     return;
   }
+
+  const rows = records.map((r, i) => {
+    const isFatura = r.doc_type === 'fatura';
+    const typeBadge = isFatura
+      ? `<span class="doc-type-badge fatura" style="font-size:9px">🧾 Fatura</span>`
+      : `<span class="doc-type-badge contacto" style="font-size:9px">👤 Contacto</span>`;
+
+    const mainRow = `
+      <tr>
+        <td class="mono-cell" style="color:var(--text2)">${i+1}</td>
+        <td>${typeBadge}</td>
+        <td class="company-cell">${esc(r.company||'—')}</td>
+        <td class="mono-cell">${esc(r.email||'—')}</td>
+        <td class="mono-cell">${esc(r.phone||'—')}</td>
+        <td class="mono-cell" style="color:var(--text2);white-space:nowrap">${new Date(r.ts).toLocaleDateString('pt-PT')}</td>
+        <td class="actions-cell">
+          ${isFatura ? `<button class="btn btn-ghost btn-sm" onclick="toggleInvDetail(${r.id})" title="Ver detalhes fatura">🧾</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="editRecord(${r.id})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRecord(${r.id})">🗑️</button>
+        </td>
+      </tr>`;
+
+    let detailRow = '';
+    if (isFatura) {
+      const items = (r.items || []).map(it => `
+        <tr>
+          <td style="padding:5px 10px;font-size:12px">${esc(it.descricao||'')}</td>
+          <td style="padding:5px 10px;font-size:12px;text-align:right;font-family:var(--mono)">${it.quantidade}</td>
+          <td style="padding:5px 10px;font-size:12px;text-align:right;font-family:var(--mono)">${(it.preco_unit||0).toFixed(2)} €</td>
+          <td style="padding:5px 10px;font-size:12px;text-align:right;font-family:var(--mono)">${it.iva_pct}%</td>
+          <td style="padding:5px 10px;font-size:12px;text-align:right;font-family:var(--mono)">${(it.total||0).toFixed(2)} €</td>
+        </tr>`).join('');
+
+      detailRow = `
+        <tr id="invDetail_${r.id}" style="display:none">
+          <td colspan="7" style="padding:0;background:var(--surface2)">
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:12px">
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">Nº Fatura</span><span style="font-family:var(--mono)">${esc(r.invoice_number||'—')}</span></div>
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">Data</span><span style="font-family:var(--mono)">${esc(r.invoice_date||'—')}</span></div>
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">Vencimento</span><span style="font-family:var(--mono)">${esc(r.due_date||'—')}</span></div>
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">NIF Fornecedor</span><span style="font-family:var(--mono)">${esc(r.nif_fornecedor||'—')}</span></div>
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">Cliente</span><span style="font-family:var(--mono)">${esc(r.client_name||'—')}</span></div>
+                <div><span style="color:var(--text2);display:block;margin-bottom:2px">NIF Cliente</span><span style="font-family:var(--mono)">${esc(r.client_nif||'—')}</span></div>
+                <div style="grid-column:span 2"><span style="color:var(--text2);display:block;margin-bottom:2px">Morada Cliente</span><span style="font-family:var(--mono)">${esc(r.client_address||'—')}</span></div>
+              </div>
+              ${items ? `
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead><tr style="border-bottom:1px solid var(--border)">
+                  <th style="padding:6px 10px;text-align:left;color:var(--text2);font-size:10px;text-transform:uppercase">Descrição</th>
+                  <th style="padding:6px 10px;text-align:right;color:var(--text2);font-size:10px;text-transform:uppercase">Qtd</th>
+                  <th style="padding:6px 10px;text-align:right;color:var(--text2);font-size:10px;text-transform:uppercase">Preço Unit.</th>
+                  <th style="padding:6px 10px;text-align:right;color:var(--text2);font-size:10px;text-transform:uppercase">IVA</th>
+                  <th style="padding:6px 10px;text-align:right;color:var(--text2);font-size:10px;text-transform:uppercase">Total</th>
+                </tr></thead>
+                <tbody>${items}</tbody>
+              </table>` : ''}
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px">
+                <div><span style="color:var(--text2);margin-right:20px">Subtotal</span><span style="font-family:var(--mono)">${fmtEur(r.subtotal)}</span></div>
+                <div><span style="color:var(--text2);margin-right:20px">IVA</span><span style="font-family:var(--mono)">${fmtEur(r.total_iva)}</span></div>
+                <div style="font-size:14px;font-weight:700;color:var(--accent2)"><span style="margin-right:20px">Total</span><span style="font-family:var(--mono)">${fmtEur(r.total)}</span></div>
+              </div>
+              ${r.notas ? `<div style="font-size:12px;color:var(--text2)">📝 ${esc(r.notas)}</div>` : ''}
+            </div>
+          </td>
+        </tr>`;
+    }
+
+    return mainRow + detailRow;
+  }).join('');
+
   el.innerHTML = `
     <div class="card">
       <div class="card-head"><h2>Todos os Registos</h2></div>
@@ -624,27 +963,18 @@ function renderRecords() {
         <table class="records-table">
           <thead>
             <tr>
-              <th>#</th><th>Empresa</th><th>Morada</th><th>Email</th><th>Telefone</th><th>Data</th><th style="text-align:right">Ações</th>
+              <th>#</th><th>Tipo</th><th>Empresa / Fornecedor</th><th>Email</th><th>Telefone</th><th>Data</th><th style="text-align:right">Ações</th>
             </tr>
           </thead>
-          <tbody>
-            ${records.map((r,i)=>`
-              <tr>
-                <td class="mono-cell" style="color:var(--text2)">${i+1}</td>
-                <td class="company-cell">${esc(r.company||'—')}</td>
-                <td class="mono-cell">${esc(r.address||'—')}</td>
-                <td class="mono-cell">${esc(r.email||'—')}</td>
-                <td class="mono-cell">${esc(r.phone||'—')}</td>
-                <td class="mono-cell" style="color:var(--text2);white-space:nowrap">${new Date(r.ts).toLocaleDateString('pt-PT')}</td>
-                <td class="actions-cell">
-                  <button class="btn btn-ghost btn-sm" onclick="editRecord(${r.id})">✏️</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteRecord(${r.id})">🗑️</button>
-                </td>
-              </tr>`).join('')}
-          </tbody>
+          <tbody>${rows}</tbody>
         </table>
       </div>
     </div>`;
+}
+
+function toggleInvDetail(id) {
+  const row = document.getElementById('invDetail_' + id);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -661,11 +991,37 @@ function deleteAll() {
 function editRecord(id) {
   const r = records.find(r=>r.id===id); if (!r) return;
   editId = id;
+  currentDocType = r.doc_type === 'fatura' ? 'fatura' : 'contacto';
+
   ['f_company','f_address','f_email','f_phone'].forEach(id => document.getElementById(id).removeAttribute('readonly'));
-  document.getElementById('f_company').value = r.company;
-  document.getElementById('f_address').value = r.address;
-  document.getElementById('f_email').value   = r.email;
-  document.getElementById('f_phone').value   = r.phone;
+  document.getElementById('f_company').value = r.company || '';
+  document.getElementById('f_address').value = r.address || '';
+  document.getElementById('f_email').value   = r.email   || '';
+  document.getElementById('f_phone').value   = r.phone   || '';
+
+  const badge = document.getElementById('docTypeBadge');
+  badge.style.display = '';
+
+  if (currentDocType === 'fatura') {
+    badge.className = 'doc-type-badge fatura';
+    badge.textContent = '🧾 Fatura';
+    document.getElementById('invoiceCard').style.display = '';
+    ['f_inv_number','f_inv_date','f_inv_due','f_inv_nif_forn','f_inv_client','f_inv_client_nif','f_inv_client_addr','f_inv_notas'].forEach(fid => document.getElementById(fid).removeAttribute('readonly'));
+    document.getElementById('f_inv_number').value      = r.invoice_number  || '';
+    document.getElementById('f_inv_date').value        = r.invoice_date    || '';
+    document.getElementById('f_inv_due').value         = r.due_date        || '';
+    document.getElementById('f_inv_nif_forn').value    = r.nif_fornecedor  || '';
+    document.getElementById('f_inv_client').value      = r.client_name     || '';
+    document.getElementById('f_inv_client_nif').value  = r.client_nif      || '';
+    document.getElementById('f_inv_client_addr').value = r.client_address  || '';
+    document.getElementById('f_inv_notas').value       = r.notas           || '';
+    renderItemsTable(r.items || []);
+  } else {
+    badge.className = 'doc-type-badge contacto';
+    badge.textContent = '👤 Contacto';
+    document.getElementById('invoiceCard').style.display = 'none';
+  }
+
   document.getElementById('saveBtn').textContent = '✓ Atualizar Registo';
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -682,15 +1038,15 @@ function renderExport() {
     return;
   }
   const n = records.length;
-  const nEmail = records.filter(r=>r.email).length;
-  const nPhone = records.filter(r=>r.phone).length;
-  const nAddr  = records.filter(r=>r.address).length;
+  const nFatura  = records.filter(r=>r.doc_type==='fatura').length;
+  const nEmail   = records.filter(r=>r.email).length;
+  const nPhone   = records.filter(r=>r.phone).length;
   el.innerHTML = `
     <div class="stats-row">
       <div class="stat-box"><div class="stat-val">${n}</div><div class="stat-label">📋 Registos</div></div>
+      <div class="stat-box"><div class="stat-val">${nFatura}</div><div class="stat-label">🧾 Faturas</div></div>
       <div class="stat-box"><div class="stat-val">${nEmail}</div><div class="stat-label">✉️ Com Email</div></div>
       <div class="stat-box"><div class="stat-val">${nPhone}</div><div class="stat-label">📞 Com Telefone</div></div>
-      <div class="stat-box"><div class="stat-val">${nAddr}</div><div class="stat-label">📍 Com Morada</div></div>
     </div>
     <div class="export-grid">
       <div class="export-card" onclick="exportCSV()">
@@ -698,7 +1054,7 @@ function renderExport() {
           <span class="export-big-icon">📊</span>
           <div><h3>CSV <span class="fmt-badge">.csv</span></h3></div>
         </div>
-        <p>Compatível com <strong>Microsoft Excel</strong>, Google Sheets, LibreOffice Calc. Ideal para análise e importação em CRMs.</p>
+        <p>Compatível com <strong>Microsoft Excel</strong>, Google Sheets, LibreOffice Calc. Inclui artigos de faturas.</p>
         <button class="btn btn-ghost btn-sm" style="align-self:flex-start">⬇️ Exportar CSV</button>
       </div>
       <div class="export-card" onclick="exportJSON()">
@@ -706,7 +1062,7 @@ function renderExport() {
           <span class="export-big-icon">🔗</span>
           <div><h3>JSON <span class="fmt-badge">.json</span></h3></div>
         </div>
-        <p>Para integrações com <strong>APIs, Node.js, Python</strong> e qualquer aplicação web moderna.</p>
+        <p>Para integrações com <strong>APIs, Node.js, Python</strong> e qualquer aplicação web moderna. Dados completos.</p>
         <button class="btn btn-ghost btn-sm" style="align-self:flex-start">⬇️ Exportar JSON</button>
       </div>
       <div class="export-card" onclick="exportVCF()">
@@ -722,7 +1078,7 @@ function renderExport() {
           <span class="export-big-icon">🗄️</span>
           <div><h3>SQL <span class="fmt-badge">.sql</span></h3></div>
         </div>
-        <p>Script pronto para importar em <strong>MySQL, PostgreSQL, SQLite</strong> ou qualquer base de dados SQL.</p>
+        <p>Script pronto para importar em <strong>MySQL, PostgreSQL, SQLite</strong>. Tabelas separadas para faturas e artigos.</p>
         <button class="btn btn-ghost btn-sm" style="align-self:flex-start">⬇️ Exportar SQL</button>
       </div>
     </div>`;
@@ -730,30 +1086,100 @@ function renderExport() {
 
 function dl(content, name, mime) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\ufeff'+content],{type:mime}));
+  a.href = URL.createObjectURL(new Blob(['﻿'+content],{type:mime}));
   a.download = name; a.click();
 }
 
+function sq(v) { return String(v||'').replace(/'/g,"''"); }
+
 function exportCSV() {
-  const h = ['ID','Nome Empresa','Morada','Email','Telefone','Data','Ficheiro Origem'];
-  const rows = records.map((r,i)=>[i+1,r.company,r.address,r.email,r.phone,new Date(r.ts).toLocaleString('pt-PT'),r.source||''].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
-  dl([h.join(','),...rows].join('\n'), 'contactos.csv', 'text/csv;charset=utf-8');
+  const lines = [];
+  // Header — all fields
+  lines.push(['ID','Tipo','Nome Empresa','Morada','Email','Telefone','Nº Fatura','Data Fatura','Vencimento','NIF Fornecedor','Cliente','NIF Cliente','Morada Cliente','Subtotal','Total IVA','Total','Artigo Nº','Descrição Artigo','Quantidade','Preço Unit.','IVA %','Total Artigo','Notas','Data Captura','Ficheiro'].map(v=>`"${v}"`).join(','));
+
+  records.forEach((r, i) => {
+    const base = [i+1, r.doc_type||'contacto', r.company, r.address, r.email, r.phone,
+      r.invoice_number||'', r.invoice_date||'', r.due_date||'', r.nif_fornecedor||'',
+      r.client_name||'', r.client_nif||'', r.client_address||'',
+      r.subtotal||'', r.total_iva||'', r.total||''];
+
+    const items = r.items && r.items.length ? r.items : [null];
+    items.forEach((it, j) => {
+      const itemCols = it
+        ? [j+1, it.descricao, it.quantidade, it.preco_unit, it.iva_pct, it.total]
+        : ['', '', '', '', '', ''];
+      lines.push([...base, ...itemCols, r.notas||'', new Date(r.ts).toLocaleString('pt-PT'), r.source||''].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','));
+    });
+  });
+
+  dl(lines.join('\n'), 'docscan_export.csv', 'text/csv;charset=utf-8');
   showToast('📊 CSV exportado!');
 }
+
 function exportJSON() {
-  const data = records.map(r=>({nome_empresa:r.company,morada:r.address,email:r.email,telefone:r.phone,data_captura:new Date(r.ts).toISOString(),ficheiro:r.source||''}));
-  dl(JSON.stringify(data,null,2), 'contactos.json', 'application/json');
+  const data = records.map(r => ({
+    tipo: r.doc_type || 'contacto',
+    nome_empresa: r.company, morada: r.address, email: r.email, telefone: r.phone,
+    ...(r.doc_type === 'fatura' ? {
+      fatura: {
+        numero: r.invoice_number, data: r.invoice_date, vencimento: r.due_date,
+        nif_fornecedor: r.nif_fornecedor, cliente: r.client_name, nif_cliente: r.client_nif,
+        morada_cliente: r.client_address, artigos: r.items || [],
+        subtotal: r.subtotal, total_iva: r.total_iva, total: r.total, notas: r.notas
+      }
+    } : {}),
+    data_captura: new Date(r.ts).toISOString(), ficheiro: r.source||''
+  }));
+  dl(JSON.stringify(data, null, 2), 'docscan_export.json', 'application/json');
   showToast('🔗 JSON exportado!');
 }
+
 function exportVCF() {
   const vcf = records.map(r=>[`BEGIN:VCARD`,'VERSION:3.0',`FN:${r.company}`,`ORG:${r.company}`,r.email?`EMAIL:${r.email}`:'',r.phone?`TEL:${r.phone}`:'',r.address?`ADR:;;${r.address};;;;`:'','END:VCARD'].filter(Boolean).join('\r\n')).join('\r\n\r\n');
   dl(vcf, 'contactos.vcf', 'text/vcard;charset=utf-8');
   showToast('👤 vCard exportado!');
 }
+
 function exportSQL() {
-  const vals = records.map(r=>`  ('${(r.company||'').replace(/'/g,"''")}','${(r.address||'').replace(/'/g,"''")}','${(r.email||'').replace(/'/g,"''")}','${(r.phone||'').replace(/'/g,"''")}','${new Date(r.ts).toISOString()}')`).join(',\n');
-  const sql = `-- DocScan Export ${new Date().toLocaleString('pt-PT')}\n\nCREATE TABLE IF NOT EXISTS contactos (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  nome_empresa TEXT,\n  morada TEXT,\n  email TEXT,\n  telefone TEXT,\n  data_captura TEXT\n);\n\nINSERT INTO contactos (nome_empresa, morada, email, telefone, data_captura) VALUES\n${vals};`;
-  dl(sql, 'contactos.sql', 'text/plain;charset=utf-8');
+  const ts = new Date().toLocaleString('pt-PT');
+  let sql = `-- DocScan Export ${ts}\n\n`;
+
+  sql += `CREATE TABLE IF NOT EXISTS documentos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tipo TEXT DEFAULT 'contacto',
+  nome_empresa TEXT, morada TEXT, email TEXT, telefone TEXT,
+  num_fatura TEXT, data_fatura TEXT, data_vencimento TEXT,
+  nif_fornecedor TEXT, cliente TEXT, nif_cliente TEXT, morada_cliente TEXT,
+  subtotal REAL DEFAULT 0, total_iva REAL DEFAULT 0, total REAL DEFAULT 0,
+  notas TEXT, data_captura TEXT, ficheiro TEXT
+);\n\n`;
+
+  sql += `CREATE TABLE IF NOT EXISTS artigos_fatura (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  documento_id INTEGER, descricao TEXT,
+  quantidade REAL DEFAULT 0, preco_unit REAL DEFAULT 0,
+  iva_pct REAL DEFAULT 0, total REAL DEFAULT 0,
+  FOREIGN KEY (documento_id) REFERENCES documentos(id)
+);\n\n`;
+
+  if (records.length) {
+    const docVals = records.map(r =>
+      `  ('${sq(r.doc_type||'contacto')}','${sq(r.company)}','${sq(r.address)}','${sq(r.email)}','${sq(r.phone)}','${sq(r.invoice_number)}','${sq(r.invoice_date)}','${sq(r.due_date)}','${sq(r.nif_fornecedor)}','${sq(r.client_name)}','${sq(r.client_nif)}','${sq(r.client_address)}',${r.subtotal||0},${r.total_iva||0},${r.total||0},'${sq(r.notas)}','${new Date(r.ts).toISOString()}','${sq(r.source)}')`
+    ).join(',\n');
+    sql += `INSERT INTO documentos (tipo,nome_empresa,morada,email,telefone,num_fatura,data_fatura,data_vencimento,nif_fornecedor,cliente,nif_cliente,morada_cliente,subtotal,total_iva,total,notas,data_captura,ficheiro) VALUES\n${docVals};\n\n`;
+
+    const faturas = records.filter(r => r.doc_type === 'fatura' && r.items && r.items.length);
+    if (faturas.length) {
+      const itemVals = faturas.flatMap((r, ri) =>
+        (r.items || []).map(it =>
+          `  ((SELECT id FROM documentos ORDER BY id LIMIT 1 OFFSET ${records.indexOf(r)}),'${sq(it.descricao)}',${it.quantidade||0},${it.preco_unit||0},${it.iva_pct||0},${it.total||0})`
+        )
+      ).join(',\n');
+      sql += `INSERT INTO artigos_fatura (documento_id,descricao,quantidade,preco_unit,iva_pct,total) VALUES\n${itemVals};\n`;
+    }
+  }
+
+  dl(sql, 'docscan_export.sql', 'text/plain;charset=utf-8');
   showToast('🗄️ SQL exportado!');
 }
 
@@ -766,4 +1192,3 @@ function showToast(msg) {
 </script>
 </body>
 </html>
-
