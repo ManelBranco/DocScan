@@ -896,15 +896,17 @@ function renderRecords() {
       : `<span class="doc-type-badge contacto" style="font-size:9px">👤 Contacto</span>`;
 
     const mainRow = `
-      <tr>
+      <tr ${isFatura ? `onclick="toggleInvDetail(${r.id})" style="cursor:pointer" title="Clique para ver detalhes"` : ''}>
         <td class="mono-cell" style="color:var(--text2)">${i+1}</td>
         <td>${typeBadge}</td>
-        <td class="company-cell">${esc(r.company||'—')}</td>
+        <td class="company-cell">
+          ${esc(r.company||'—')}
+          ${isFatura ? `<span id="invChevron_${r.id}" style="margin-left:6px;font-size:10px;color:var(--text2);transition:transform .2s;display:inline-block">▼</span>` : ''}
+        </td>
         <td class="mono-cell">${esc(r.email||'—')}</td>
         <td class="mono-cell">${esc(r.phone||'—')}</td>
         <td class="mono-cell" style="color:var(--text2);white-space:nowrap">${new Date(r.ts).toLocaleDateString('pt-PT')}</td>
-        <td class="actions-cell">
-          ${isFatura ? `<button class="btn btn-ghost btn-sm" onclick="toggleInvDetail(${r.id})" title="Ver detalhes fatura">🧾</button>` : ''}
+        <td class="actions-cell" onclick="event.stopPropagation()">
           <button class="btn btn-ghost btn-sm" onclick="editRecord(${r.id})">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteRecord(${r.id})">🗑️</button>
         </td>
@@ -977,7 +979,11 @@ function renderRecords() {
 
 function toggleInvDetail(id) {
   const row = document.getElementById('invDetail_' + id);
-  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+  const chevron = document.getElementById('invChevron_' + id);
+  if (!row) return;
+  const open = row.style.display === 'none';
+  row.style.display = open ? '' : 'none';
+  if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
