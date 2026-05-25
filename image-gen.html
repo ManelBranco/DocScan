@@ -279,13 +279,15 @@ textarea:focus, .txt-input:focus {
   background: var(--surface);
   border: 1.5px dashed var(--border);
   border-radius: var(--radius-lg);
-  min-height: 400px;
+  min-height: 280px;
+  max-height: 84vh;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; overflow: hidden; transition: border-color .2s;
+  gap: 10px; overflow: hidden; transition: border-color .2s, aspect-ratio .25s;
   position: relative;
+  /* aspect-ratio set entirely by JS — no default here */
 }
-.img-canvas.loaded { border-style: solid; border-color: var(--purple); box-shadow: 0 0 0 1px rgba(139,92,246,.2); }
-.img-canvas img { max-width: 100%; max-height: 72vh; object-fit: contain; display: block; border-radius: 8px; }
+.img-canvas.loaded { border-style: solid; border-color: var(--purple); box-shadow: 0 0 0 1px rgba(139,92,246,.2); min-height: unset; }
+.img-canvas img { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: 8px; }
 .img-placeholder { text-align: center; color: var(--text3); padding: 40px 30px; }
 .img-placeholder .ico { font-size: 48px; opacity: .2; margin-bottom: 14px; }
 .img-placeholder p { font-size: 13px; line-height: 1.7; color: var(--text2); }
@@ -382,6 +384,27 @@ textarea:focus, .txt-input:focus {
 .ld-dv{ background: #f59e0b; height: 2px; width: 100%; flex-shrink: 0; }
 .ld-dv-v{ background: #f59e0b; width: 2px; flex-shrink: 0; }
 
+/* ── PANEL CONTROLS (drag / edit mode) ────────────────────────────── */
+.panel-ctrl-bar {
+  width: 100%; background: rgba(139,92,246,.08); border: 1px solid rgba(139,92,246,.22);
+  border-radius: 10px; padding: 10px 14px; margin-top: 6px;
+  display: flex; flex-direction: column; gap: 7px; flex-shrink: 0;
+}
+.panel-ctrl-title {
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--purple); margin-bottom: 1px;
+}
+.panel-ctrl-row { display: flex; align-items: center; gap: 8px; }
+.panel-ctrl-lbl { font-size: 9.5px; color: var(--text2); min-width: 68px; flex-shrink: 0; }
+.panel-ctrl-row input[type=color] {
+  width: 26px; height: 20px; border-radius: 4px; border: 1px solid var(--border);
+  cursor: pointer; padding: 1px 2px; background: none; flex-shrink: 0;
+}
+.panel-ctrl-row input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+.panel-ctrl-row input[type=color]::-webkit-color-swatch { border: none; border-radius: 3px; }
+.panel-ctrl-row input[type=range] { flex: 1; accent-color: var(--purple); cursor: pointer; }
+.panel-ctrl-val { font-family: var(--mono); font-size: 9.5px; color: var(--accent2); min-width: 34px; text-align: right; }
+
 /* ── TOAST ─────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -430,7 +453,12 @@ textarea:focus, .txt-input:focus {
 }
 .drag-block:hover   { border-color: var(--amber); }
 .drag-block.dragging{ cursor: grabbing !important; border-color: var(--amber); box-shadow: 0 6px 24px rgba(0,0,0,.55); z-index: 10; }
+.drag-block.selected{ border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(6,182,212,.3); }
 .drag-block.editing { border-color: var(--accent); border-style: solid; }
+/* Position readout inside block */
+.drag-pos-readout { font-family: var(--mono); font-size: 8px; color: rgba(6,182,212,.5); text-align: right; margin-top: 3px; pointer-events: none; line-height: 1; }
+.drag-block.selected .drag-pos-readout { color: var(--accent2); }
+.drag-block.dragging .drag-pos-readout { color: var(--amber); }
 .drag-block-head { display: flex; align-items: center; gap: 4px; margin-bottom: 5px; cursor: grab; }
 .drag-block-head:active { cursor: grabbing; }
 .drag-block-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: rgba(245,158,11,.75); flex: 1; }
@@ -439,6 +467,24 @@ textarea:focus, .txt-input:focus {
 .drag-btn:hover { background: rgba(255,255,255,.25); }
 .drag-btn.edit-btn { background: rgba(59,130,246,.3); }
 .drag-btn.edit-btn:hover { background: rgba(59,130,246,.6); }
+/* Colour picker inside each drag block */
+.drag-color-btn {
+  width: 18px; height: 18px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,.35); cursor: pointer;
+  padding: 1px; flex-shrink: 0;
+  appearance: none; -webkit-appearance: none; background: none;
+}
+.drag-color-btn::-webkit-color-swatch-wrapper { padding: 0; }
+.drag-color-btn::-webkit-color-swatch { border: none; border-radius: 2px; }
+/* Preset size buttons */
+.preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.preset-btn {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text2); font-family: var(--sans); font-size: 9px; font-weight: 600;
+  cursor: pointer; padding: 5px 4px; text-align: center; transition: all .15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.preset-btn:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
 .drag-block-content { pointer-events: auto; cursor: pointer; word-break: break-word; transition: opacity .12s; }
 .drag-block-content:hover { opacity: .85; }
 .drag-block.editing .drag-block-content { pointer-events: none; }
@@ -483,7 +529,7 @@ textarea:focus, .txt-input:focus {
   <!-- ── SIDEBAR ──────────────────────────────────────────────────── -->
   <div class="sidebar">
 
-    <div class="sb-section">Modelo</div>
+
     <div class="sb-group">
       <div>
         <div class="sb-label">Motor de IA</div>
@@ -505,6 +551,18 @@ textarea:focus, .txt-input:focus {
         <div class="dim-wrap">
           <span>Altura (px)</span>
           <input type="number" class="dim-input" id="cfg_height" value="1024" min="256" max="1920" step="64">
+        </div>
+      </div>
+
+      <div>
+        <div class="sb-label">Tamanhos Rápidos</div>
+        <div class="preset-grid">
+          <button class="preset-btn" onclick="setSize(1024,1024)" title="1024×1024">⬛ Quadrado</button>
+          <button class="preset-btn" onclick="setSize(1920,1080)" title="1920×1080">🖥️ 16:9 HD</button>
+          <button class="preset-btn" onclick="setSize(1080,1920)" title="1080×1920">📱 9:16 Vert.</button>
+          <button class="preset-btn" onclick="setSize(1200,675)"  title="1200×675">🐦 Twitter/X</button>
+          <button class="preset-btn" onclick="setSize(1080,1350)" title="1080×1350">📷 Insta 4:5</button>
+          <button class="preset-btn" onclick="setSize(794,1123)"  title="794×1123">📄 A4 Poster</button>
         </div>
       </div>
 
@@ -1070,7 +1128,10 @@ async function recompositeCurrent() {
 
 function _renderOutputBase(loaded, w, h, model, prompt) {
   const cv = document.getElementById('imgCanvas');
-  cv.classList.add('loaded'); cv.style.cssText = ''; cv.scrollTop = 0;
+  cv.classList.add('loaded');
+  cv.style.minHeight = '';   // lift placeholder min-height
+  syncCanvasAspect(w, h);    // set exact ratio from generation params
+  cv.scrollTop = 0;
   _lastRawUrls = loaded.map(x => x.url);
   _lastRawImgs = loaded.map(x => x.img || null);
   _selectedPhotoIdx = 0;
@@ -1099,6 +1160,8 @@ async function renderOutput(loaded, w, h, model, prompt) {
   const cv = document.getElementById('imgCanvas');
   cv.innerHTML = `<div style="text-align:center;color:var(--text2);padding:30px"><span class="spin" style="font-size:28px">🖼️</span><br><br><strong style="color:var(--text)">A compor cartaz…</strong></div>`;
   cv.classList.add('loaded');
+  cv.style.minHeight = '';
+  syncCanvasAspect(w, h);
 
   const results = await Promise.allSettled(loaded.map(item => compositeNewsImage(item.img || item.url)));
   const composited = results.map((r,i)=>({ ok:r.status==='fulfilled', dataUrl:r.value, seed:loaded[i].seed })).filter(x=>x.ok);
@@ -1176,6 +1239,7 @@ function clearAll() {
   const cv = document.getElementById('imgCanvas');
   cv.className = 'img-canvas'; cv.style.cssText = '';
   cv.innerHTML = `<div class="img-placeholder"><div class="ico">🎨</div><p>A imagem aparecerá aqui.<br>Escreve um prompt e clica em <strong>Gerar</strong>.</p></div>`;
+  syncCanvasAspect();
   document.getElementById('imgMeta').style.display = 'none';
   document.getElementById('downloadBtn').style.display = 'none';
   document.getElementById('addGalleryBtn').style.display = 'none';
@@ -1272,8 +1336,28 @@ function selectLayout(el) {
 }
 
 // ── Drag Mode ─────────────────────────────────────────────────────────────────
-let _dragActive = false;
-let _dragPositions = {};   // { blockId: { xPct, yPct } }
+let _dragActive    = false;
+let _dragPositions = {};   // { blockId: { xPct, yPct, widthPct, text, color } }
+let _selectedDragId = null; // which drag block has keyboard focus
+let _panelPreviewTimer = null;
+// Panel visual settings — persist across edit sessions until page reload
+let _panelSettings = { heightScale: 1.0, opacity: 1.0, cornerRadius: 0, bgColor: null, accentColor: null };
+
+// Live-preview panel changes while in drag mode (debounced)
+async function schedulePanelPreview() {
+  if (!_dragActive) return;
+  if (_panelPreviewTimer) clearTimeout(_panelPreviewTimer);
+  _panelPreviewTimer = setTimeout(async () => {
+    _panelPreviewTimer = null;
+    const src = _lastRawImgs[_selectedPhotoIdx] || _lastRawImgs[0];
+    if (!src) return;
+    try {
+      const newUrl = await compositeNewsImage(src);
+      const bgImg  = document.getElementById('dragBgImg');
+      if (bgImg) bgImg.src = newUrl;
+    } catch(_) {}
+  }, 350);
+}
 
 function toggleDragMode() {
   if (_dragActive) {
@@ -1283,29 +1367,38 @@ function toggleDragMode() {
   }
 }
 
+// Shared helper — builds the inner HTML for a drag-block content area
+function _blockContentHTML(id, text, color, theme) {
+  if (id === 'headline') return `<span style="font-size:15px;font-weight:800;color:${color||theme.headlineColor};line-height:1.3">${text}</span>`;
+  if (id === 'subtitle') return `<span style="font-size:11px;color:${color||theme.subtitleColor}">${text}</span>`;
+  if (id === 'badge')    return `<span style="background:${color||theme.badgeColor};color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:4px">${text}</span>`;
+  if (id === 'pub')      return `<span style="font-weight:700;font-size:13px;color:${color||theme.pubColor}">${text}</span>`;
+  return text;
+}
+
 function enterDragMode() {
   if (!_lastRawUrls.length) { showToast('⚠️ Gera uma imagem primeiro.'); return; }
   _dragActive = true;
-  _dragPositions = {};
+  // ── Preserve positions from a previous edit session ──────────────────────────
+  const hasPrev = Object.keys(_dragPositions).length > 0;
 
-  const cv       = document.getElementById('imgCanvas');
+  const cv = document.getElementById('imgCanvas');
 
-  // Build a local data-URL from the stored Image element so drag mode never
-  // re-fetches from Pollinations (which serves Cache-Control: no-store and
-  // will 402-rate-limit on a second request, leaving the container 0×0).
-  const _rawImg = _lastRawImgs[_selectedPhotoIdx] || _lastRawImgs[0];
-  let imgUrl;
-  if (_rawImg && _rawImg.naturalWidth) {
-    const _tc = document.createElement('canvas');
-    _tc.width = _rawImg.naturalWidth; _tc.height = _rawImg.naturalHeight;
-    _tc.getContext('2d').drawImage(_rawImg, 0, 0);
-    imgUrl = _tc.toDataURL('image/jpeg', 0.92);
-  } else {
-    imgUrl = _lastRawUrls[_selectedPhotoIdx] || _lastRawUrls[0];
-  }
+  // Use the already-composited image (with panel) as background
+  const imgUrl = currentUrls[_selectedPhotoIdx] || currentUrls[0] ||
+    (() => {
+      const ri = _lastRawImgs[_selectedPhotoIdx] || _lastRawImgs[0];
+      if (ri && ri.naturalWidth) {
+        const tc = document.createElement('canvas');
+        tc.width = ri.naturalWidth; tc.height = ri.naturalHeight;
+        tc.getContext('2d').drawImage(ri, 0, 0);
+        return tc.toDataURL('image/jpeg', 0.92);
+      }
+      return _lastRawUrls[_selectedPhotoIdx] || _lastRawUrls[0];
+    })();
 
-  const theme    = getEffectiveTheme();
-  const themeName= document.getElementById('pt_theme').value;
+  const theme     = getEffectiveTheme();
+  const themeName = document.getElementById('pt_theme').value;
 
   const headline    = document.getElementById('show_headline').checked    ? document.getElementById('pt_headline').value.trim()    : '';
   const publication = document.getElementById('show_publication').checked ? document.getElementById('pt_publication').value.trim() : '';
@@ -1313,59 +1406,125 @@ function enterDragMode() {
   const subtitle    = document.getElementById('show_subtitle').checked    ? document.getElementById('pt_subtitle').value.trim()    : '';
   const date        = document.getElementById('show_date').checked        ? document.getElementById('pt_date').value.trim()        : '';
 
-  // Defaults iniciais por zona  (xPct%, yPct%)
-  const defs = { pub:'5,4', badge:'5,14', headline:'5,24', subtitle:'5,56' };
+  // ── Compute layout geometry for default positions ─────────────────────────
+  const rawImg = _lastRawImgs[_selectedPhotoIdx] || _lastRawImgs[0];
+  const IW = (rawImg && rawImg.naturalWidth)  || 1024;
+  const IH = (rawImg && rawImg.naturalHeight) || 1024;
+  const layout = document.getElementById('pt_position').value || 'rodape';
+  const TH = Math.round(IW * .42 * _panelSettings.heightScale);
+  const TW = Math.round(IH * .42 * _panelSettings.heightScale);
 
-  const blocks = [];
-  if (publication || date) blocks.push({
-    id:'pub', label:'Publicação / Data',
-    rawText: [publication ? publication.toUpperCase() : '', date].filter(Boolean).join(' · '),
-    content: `<span style="font-weight:700;font-size:13px;color:${theme.pubColor}">${publication.toUpperCase()}</span>${date?`<span style="font-size:10px;color:${theme.dateColor};margin-left:8px">${date}</span>`:''}`,
-    def: defs.pub
-  });
-  if (category) blocks.push({
-    id:'badge', label:'Categoria',
-    rawText: category,
-    content: `<span style="background:${theme.badgeColor};color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:4px">${category}</span>`,
-    def: defs.badge
-  });
-  if (headline) blocks.push({
-    id:'headline', label:'Manchete',
-    rawText: headline,
-    content: `<span style="font-size:15px;font-weight:800;color:${theme.headlineColor};line-height:1.3">${headline}</span>`,
-    def: defs.headline
-  });
-  if (subtitle) blocks.push({
-    id:'subtitle', label:'Sub-título',
-    rawText: subtitle,
-    content: `<span style="font-size:11px;color:${theme.subtitleColor}">${subtitle}</span>`,
-    def: defs.subtitle
-  });
+  let CW, CH, textZone;
+  switch(layout) {
+    case 'rodape':    CW=IW; CH=IH+TH; textZone={x:0,y:IH,w:CW,h:TH}; break;
+    case 'cabecalho': CW=IW; CH=IH+Math.round(IW*.28*_panelSettings.heightScale); textZone={x:0,y:0,w:CW,h:Math.round(IW*.28*_panelSettings.heightScale)}; break;
+    case 'ambos':     CW=IW; CH=Math.round(IW*.09)+IH+Math.round(IW*.30*_panelSettings.heightScale); textZone={x:0,y:Math.round(IW*.09)+IH,w:CW,h:Math.round(IW*.30*_panelSettings.heightScale)}; break;
+    case 'col_esq':   CW=IW+TW; CH=IH; textZone={x:0,y:0,w:TW,h:CH}; break;
+    case 'col_dir':   CW=IW+TW; CH=IH; textZone={x:IW,y:0,w:TW,h:CH}; break;
+    case 'dividido':  CW=IW; CH=IH+Math.round(IH*.52*_panelSettings.heightScale); textZone={x:0,y:IH,w:CW,h:Math.round(IH*.52*_panelSettings.heightScale)}; break;
+    default:          CW=IW; CH=IH+TH; textZone={x:0,y:IH,w:CW,h:TH};
+  }
 
-  if (!blocks.length) { showToast('⚠️ Nenhum campo ativo para arrastar.'); return; }
+  const pad = Math.round(textZone.w * .06);
+  const tzL = ((textZone.x + pad) / CW * 100).toFixed(1);
+  const tzW = Math.min(90, ((textZone.w - pad * 2) / CW * 100)).toFixed(1);
+  const tzT = (textZone.y / CH * 100).toFixed(1);
+  const tzH = (textZone.h / CH * 100);
+
+  const defs = {
+    pub:      `${tzL},${(parseFloat(tzT) + tzH*.08).toFixed(1)}`,
+    badge:    `${tzL},${(parseFloat(tzT) + tzH*.26).toFixed(1)}`,
+    headline: `${tzL},${(parseFloat(tzT) + tzH*.40).toFixed(1)}`,
+    subtitle: `${tzL},${(parseFloat(tzT) + tzH*.73).toFixed(1)}`
+  };
+
+  const colorMap = { pub: theme.pubColor, badge: theme.badgeColor, headline: theme.headlineColor, subtitle: theme.subtitleColor };
+
+  // Candidate blocks (fresh from DOM)
+  const candidates = [];
+  if (publication || date) candidates.push({ id:'pub',      label:'Publicação / Data', rawText: [publication?publication.toUpperCase():'',date].filter(Boolean).join(' · '), def: defs.pub,      themeColor: colorMap.pub });
+  if (category)            candidates.push({ id:'badge',    label:'Categoria',         rawText: category,                                                                    def: defs.badge,    themeColor: colorMap.badge });
+  if (headline)            candidates.push({ id:'headline', label:'Manchete',          rawText: headline,                                                                    def: defs.headline, themeColor: colorMap.headline });
+  if (subtitle)            candidates.push({ id:'subtitle', label:'Sub-título',        rawText: subtitle,                                                                    def: defs.subtitle, themeColor: colorMap.subtitle });
+
+  if (!candidates.length) { showToast('⚠️ Nenhum campo ativo para arrastar.'); _dragActive = false; return; }
+
+  const blockHTML = candidates.map(b => {
+    const prev = hasPrev ? _dragPositions[b.id] : null;
+    // Position: saved → default
+    const xp = prev ? prev.xPct.toFixed(1)    : b.def.split(',')[0];
+    const yp = prev ? prev.yPct.toFixed(1)    : b.def.split(',')[1];
+    const wp = prev ? prev.widthPct.toFixed(1) : tzW;
+    // Colour: saved → theme default
+    const bColor = prev?.color || b.themeColor;
+    // Text: always fresh from DOM (user may have edited sidebar fields)
+    const bText = b.rawText;
+
+    // Update or create position entry
+    _dragPositions[b.id] = { xPct: parseFloat(xp), yPct: parseFloat(yp), widthPct: parseFloat(wp), text: bText, color: bColor };
+
+    const contentHtml = _blockContentHTML(b.id, bText, bColor, theme);
+
+    return `
+      <div class="drag-block" id="dblock_${b.id}" style="left:${xp}%;top:${yp}%;width:${wp}%" data-id="${b.id}">
+        <div class="drag-block-head">
+          <span class="drag-block-label">${b.label}</span>
+          <div class="drag-block-btns">
+            <input type="color" class="drag-color-btn" value="${bColor}"
+              oninput="changeDragBlockColor('${b.id}',this.value)" title="Cor do texto">
+            <button class="drag-btn edit-btn" onclick="editDragBlock('${b.id}')" title="Editar texto">✏️</button>
+          </div>
+        </div>
+        <div class="drag-block-content" id="dcontent_${b.id}" onclick="editDragBlock('${b.id}')" title="Clica para editar">${contentHtml}</div>
+        <div class="drag-pos-readout" id="dpos_${b.id}">X:${xp}% Y:${yp}% W:${wp}%</div>
+        <div class="drag-resize" id="dresize_${b.id}" title="Redimensionar">⊡</div>
+      </div>`;
+  }).join('');
+
+  // ── Current panel settings (for control pickers) ──────────────────────────
+  const effBg     = _panelSettings.bgColor     || theme.panelBg;
+  const effAccent = _panelSettings.accentColor || theme.badgeColor;
+  const effScale  = _panelSettings.heightScale;
+  const effOpac   = _panelSettings.opacity;
+  const effRadius = _panelSettings.cornerRadius;
 
   cv.innerHTML = `
     <div class="drag-container" id="dragContainer">
       <img src="${imgUrl}" crossorigin="anonymous" id="dragBgImg">
-      ${blocks.map(b => {
-        const [xp,yp] = b.def.split(',');
-        _dragPositions[b.id] = { xPct: parseFloat(xp), yPct: parseFloat(yp), widthPct: 44, text: b.rawText };
-        return `
-          <div class="drag-block" id="dblock_${b.id}" style="left:${xp}%;top:${yp}%;width:44%" data-id="${b.id}">
-            <div class="drag-block-head">
-              <span class="drag-block-label">${b.label}</span>
-              <div class="drag-block-btns">
-                <button class="drag-btn edit-btn" onclick="editDragBlock('${b.id}')" title="Editar texto">✏️</button>
-              </div>
-            </div>
-            <div class="drag-block-content" id="dcontent_${b.id}" onclick="editDragBlock('${b.id}')" title="Clica para editar">${b.content}</div>
-            <div class="drag-resize" id="dresize_${b.id}" title="Redimensionar">⊡</div>
-          </div>`;
-      }).join('')}
+      ${blockHTML}
     </div>
     <div class="drag-hint">
-      🖱️ Arrasta pela barra &nbsp;·&nbsp; 🖊 Clica no texto para editar &nbsp;·&nbsp; ⊡ Redimensiona &nbsp;·&nbsp;
-      Clica <strong style="color:var(--amber)">✅ Confirmar</strong> para gravar
+      🖱️ Arrasta pela barra &nbsp;·&nbsp; ⌨️ Setas (Shift=fino) &nbsp;·&nbsp; 🎨 Cor &nbsp;·&nbsp; 🖊 Clica para editar &nbsp;·&nbsp; ⊡ Redimensiona &nbsp;·&nbsp;
+      <strong style="color:var(--amber)">✅ Confirmar</strong>
+    </div>
+    <div class="panel-ctrl-bar" id="panelCtrlBar">
+      <div class="panel-ctrl-title">🎨 Fundo do Painel</div>
+      <div class="panel-ctrl-row">
+        <span class="panel-ctrl-lbl">🖌️ Cor fundo</span>
+        <input type="color" value="${effBg}"
+          oninput="_panelSettings.bgColor=this.value;schedulePanelPreview()" title="Cor do painel">
+        <span class="panel-ctrl-lbl" style="min-width:52px">✨ Acento</span>
+        <input type="color" value="${effAccent}"
+          oninput="_panelSettings.accentColor=this.value;schedulePanelPreview()" title="Cor da barra de destaque">
+      </div>
+      <div class="panel-ctrl-row">
+        <span class="panel-ctrl-lbl">📏 Altura</span>
+        <input type="range" min="0.4" max="2.5" step="0.05" value="${effScale}"
+          oninput="_panelSettings.heightScale=parseFloat(this.value);document.getElementById('pc_hval').textContent=Math.round(this.value*100)+'%';schedulePanelPreview()">
+        <span class="panel-ctrl-val" id="pc_hval">${Math.round(effScale*100)}%</span>
+      </div>
+      <div class="panel-ctrl-row">
+        <span class="panel-ctrl-lbl">💧 Opacidade</span>
+        <input type="range" min="0.05" max="1" step="0.05" value="${effOpac}"
+          oninput="_panelSettings.opacity=parseFloat(this.value);document.getElementById('pc_oval').textContent=Math.round(this.value*100)+'%';schedulePanelPreview()">
+        <span class="panel-ctrl-val" id="pc_oval">${Math.round(effOpac*100)}%</span>
+      </div>
+      <div class="panel-ctrl-row">
+        <span class="panel-ctrl-lbl">⚪ Cantos</span>
+        <input type="range" min="0" max="60" step="2" value="${effRadius}"
+          oninput="_panelSettings.cornerRadius=parseInt(this.value);document.getElementById('pc_rval').textContent=this.value+'px';schedulePanelPreview()">
+        <span class="panel-ctrl-val" id="pc_rval">${effRadius}px</span>
+      </div>
     </div>`;
 
   cv.querySelectorAll('.drag-block').forEach(block => initDraggable(block));
@@ -1387,7 +1546,7 @@ function enterDragMode() {
 
 function exitDragMode() {
   _dragActive = false;
-  document.getElementById('dragModeBtn').textContent = '🖱️ Arrastar';
+  document.getElementById('dragModeBtn').textContent = '🖱️ Editar';
   document.getElementById('applyDragBtn').style.display = 'none';
   // Restore last composited view
   if (currentUrls.length) {
@@ -1409,11 +1568,14 @@ function initDraggable(el) {
   // ── DRAG via header ───────────────────────────────────────────────────────
   let dStartX, dStartY, dStartLeft, dStartTop;
   head.addEventListener('pointerdown', e => {
-    if (e.target.closest('button')) return;   // don't drag when clicking edit btn
+    if (e.target.closest('button,input')) return;  // don't drag when clicking edit btn or color picker
     if (el.classList.contains('editing')) return;  // don't drag while editing text
     e.preventDefault(); e.stopPropagation();
     head.setPointerCapture(e.pointerId);
-    el.classList.add('dragging');
+    // Mark this block as selected
+    _selectedDragId = id;
+    document.querySelectorAll('.drag-block').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected', 'dragging');
     dStartX = e.clientX; dStartY = e.clientY;
     dStartLeft = parseFloat(el.style.left) || 0;
     dStartTop  = parseFloat(el.style.top)  || 0;
@@ -1428,6 +1590,8 @@ function initDraggable(el) {
     el.style.left = newLeft + '%';
     el.style.top  = newTop  + '%';
     if (_dragPositions[id]) { _dragPositions[id].xPct = newLeft; _dragPositions[id].yPct = newTop; }
+    const readout = document.getElementById('dpos_' + id);
+    if (readout) readout.textContent = `X:${newLeft.toFixed(1)}% Y:${newTop.toFixed(1)}% W:${w.toFixed(1)}%`;
   });
   head.addEventListener('pointerup', () => el.classList.remove('dragging'));
 
@@ -1439,7 +1603,10 @@ function initDraggable(el) {
       e.preventDefault(); e.stopPropagation();
       resizeHandle.setPointerCapture(e.pointerId);
       resizeHandle._resizing = true;
-      el.classList.add('dragging');
+      // Also select block on resize
+      _selectedDragId = id;
+      document.querySelectorAll('.drag-block').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected', 'dragging');
       rStartX = e.clientX;
       rStartW = parseFloat(el.style.width) || 44;
     });
@@ -1449,6 +1616,12 @@ function initDraggable(el) {
       const newW = Math.max(15, Math.min(90, rStartW + ((e.clientX - rStartX) / cw) * 100));
       el.style.width = newW + '%';
       if (_dragPositions[id]) _dragPositions[id].widthPct = newW;
+      const readout = document.getElementById('dpos_' + id);
+      if (readout) {
+        const curL = parseFloat(el.style.left).toFixed(1);
+        const curT = parseFloat(el.style.top).toFixed(1);
+        readout.textContent = `X:${curL}% Y:${curT}% W:${newW.toFixed(1)}%`;
+      }
     });
     resizeHandle.addEventListener('pointerup', () => {
       resizeHandle._resizing = false;
@@ -1456,6 +1629,35 @@ function initDraggable(el) {
     });
   }
 }
+
+// ── Arrow-key nudge for selected drag block ───────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (!_dragActive || !_selectedDragId) return;
+  const block = document.getElementById('dblock_' + _selectedDragId);
+  if (!block || block.classList.contains('editing')) return;
+  // Only intercept arrow keys
+  if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+
+  e.preventDefault();
+  const NUDGE = e.shiftKey ? 0.1 : 0.5;  // Shift = fine, normal = coarse
+  const w      = parseFloat(block.style.width) || 44;
+  let curL = parseFloat(block.style.left) || 0;
+  let curT = parseFloat(block.style.top)  || 0;
+
+  if (e.key === 'ArrowLeft')  curL = Math.max(0,       curL - NUDGE);
+  if (e.key === 'ArrowRight') curL = Math.min(100 - w, curL + NUDGE);
+  if (e.key === 'ArrowUp')    curT = Math.max(0,       curT - NUDGE);
+  if (e.key === 'ArrowDown')  curT = Math.min(90,      curT + NUDGE);
+
+  block.style.left = curL + '%';
+  block.style.top  = curT + '%';
+
+  const id = _selectedDragId;
+  if (_dragPositions[id]) { _dragPositions[id].xPct = curL; _dragPositions[id].yPct = curT; }
+
+  const readout = document.getElementById('dpos_' + id);
+  if (readout) readout.textContent = `X:${curL.toFixed(1)}% Y:${curT.toFixed(1)}% W:${w.toFixed(1)}%`;
+});
 
 // ── Edit drag blocks ──────────────────────────────────────────────────────────
 function editDragBlock(id) {
@@ -1512,14 +1714,9 @@ function confirmEditBlock(id) {
   else if (id === 'subtitle') document.getElementById('pt_subtitle').value = newText;
   else if (id === 'badge')    document.getElementById('pt_category').value = newText;
 
-  // Rebuild display HTML
-  const theme     = getEffectiveTheme();
-  const themeName = document.getElementById('pt_theme').value;
-  let html = newText;
-  if      (id === 'headline') html = `<span style="font-size:15px;font-weight:800;color:${theme.headlineColor};line-height:1.3">${newText}</span>`;
-  else if (id === 'subtitle') html = `<span style="font-size:11px;color:${theme.subtitleColor}">${newText}</span>`;
-  else if (id === 'badge')    html = `<span style="background:${theme.badgeColor};color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:4px">${newText}</span>`;
-  else if (id === 'pub')      html = `<span style="font-weight:700;font-size:13px;color:${theme.pubColor}">${newText}</span>`;
+  // Rebuild display HTML via shared helper (respects saved colour)
+  const theme = getEffectiveTheme();
+  const html  = _blockContentHTML(id, newText, _dragPositions[id]?.color, theme);
 
   content.innerHTML     = html;
   content.style.display = '';
@@ -1541,6 +1738,28 @@ function cancelEditBlock(id) {
   if (btn) btn.textContent = '✏️';
 }
 
+// ── Change colour of a drag block live ───────────────────────────────────────
+function changeDragBlockColor(id, color) {
+  if (_dragPositions[id]) _dragPositions[id].color = color;
+  const content = document.getElementById('dcontent_' + id);
+  if (!content) return;
+  const span = content.querySelector('span');
+  if (!span) return;
+  if (id === 'badge') {
+    span.style.background = color;   // badge uses bg colour
+  } else {
+    span.style.color = color;         // text blocks use fg colour
+  }
+}
+
+// ── Preset image sizes ────────────────────────────────────────────────────────
+function setSize(w, h) {
+  document.getElementById('cfg_width').value  = w;
+  document.getElementById('cfg_height').value = h;
+  syncCanvasAspect();
+  showToast(`📐 ${w} × ${h} px`);
+}
+
 async function applyDragPositions() {
   if (!_lastRawUrls.length) return;
   document.getElementById('applyDragBtn').disabled = true;
@@ -1548,71 +1767,166 @@ async function applyDragPositions() {
 
   try { await document.fonts.load('800 72px Inter'); } catch {}
 
-  const srcIdx = _selectedPhotoIdx < _lastRawUrls.length ? _selectedPhotoIdx : 0;
-  const srcUrl = _lastRawUrls[srcIdx];
+  const srcIdx   = _selectedPhotoIdx < _lastRawUrls.length ? _selectedPhotoIdx : 0;
+  const srcUrl   = _lastRawUrls[srcIdx];
+  const layout   = document.getElementById('pt_position').value || 'rodape';
+  const theme    = getEffectiveTheme();
+  const themeName= document.getElementById('pt_theme').value;
+  const scaleF   = { normal:1, large:1.2, xlarge:1.45, compact:.75 }[document.getElementById('pt_fontscale').value] || 1;
+
+  // Use edited text if available, otherwise fall back to DOM fields
+  const _txt = id => (_dragPositions[id] && _dragPositions[id].text != null) ? _dragPositions[id].text : null;
+  // Use custom drag colour if set, otherwise fall back to theme
+  const _col = (id, fallback) => (_dragPositions[id]?.color) || fallback;
+
+  const headline    = document.getElementById('show_headline').checked    ? (_txt('headline') ?? document.getElementById('pt_headline').value.trim())   : '';
+  const publication = document.getElementById('show_publication').checked ? document.getElementById('pt_publication').value.trim() : '';
+  const category    = document.getElementById('show_category').checked    ? (_txt('badge')    ?? document.getElementById('pt_category').value.trim())   : '';
+  const subtitle    = document.getElementById('show_subtitle').checked    ? (_txt('subtitle') ?? document.getElementById('pt_subtitle').value.trim())   : '';
+  const date        = document.getElementById('show_date').checked        ? document.getElementById('pt_date').value.trim() : '';
 
   const result = await new Promise((resolve, reject) => {
     const img = new Image(); img.crossOrigin = 'anonymous';
     img.onerror = reject;
     img.onload = () => {
-      const IW = img.width, IH = img.height;
-      const canvas = document.createElement('canvas');
-      canvas.width = IW; canvas.height = IH;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
+      try {
+        const IW = img.width, IH = img.height;
+        // Apply panel height scale from _panelSettings
+        const hs = _panelSettings.heightScale || 1;
+        const TH = Math.round(IW * .42 * hs), TW = Math.round(IH * .42 * hs);
+        const panelBg     = _panelSettings.bgColor     || theme.panelBg;
+        const panelAccent = _panelSettings.accentColor || theme.badgeColor;
+        const panelOpac   = _panelSettings.opacity ?? 1;
+        const panelRadius = _panelSettings.cornerRadius || 0;
 
-      const theme    = getEffectiveTheme();
-      const themeName= document.getElementById('pt_theme').value;
-      const scaleF   = { normal:1, large:1.2, xlarge:1.45, compact:.75 }[document.getElementById('pt_fontscale').value] || 1;
+        // ── Compute layout geometry (same as compositeNewsImage) ────────────────
+        let CW, CH, photoRect, textZone;
+        switch(layout) {
+          case 'rodape':
+            CW=IW; CH=IH+TH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:TH}; break;
+          case 'cabecalho':
+            CW=IW; CH=IH+Math.round(IW*.28*hs);
+            textZone={x:0,y:0,w:CW,h:Math.round(IW*.28*hs)}; photoRect={x:0,y:Math.round(IW*.28*hs),w:IW,h:IH}; break;
+          case 'ambos':
+            CW=IW; CH=Math.round(IW*.09)+IH+Math.round(IW*.30*hs);
+            photoRect={x:0,y:Math.round(IW*.09),w:IW,h:IH};
+            textZone={x:0,y:Math.round(IW*.09)+IH,w:CW,h:Math.round(IW*.30*hs)};
+            textZone._topBar={x:0,y:0,w:CW,h:Math.round(IW*.09)}; break;
+          case 'col_esq':
+            CW=IW+TW; CH=IH; textZone={x:0,y:0,w:TW,h:CH}; photoRect={x:TW,y:0,w:IW,h:IH}; break;
+          case 'col_dir':
+            CW=IW+TW; CH=IH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:IW,y:0,w:TW,h:CH}; break;
+          case 'dividido':
+            CW=IW; CH=IH+Math.round(IH*.52*hs); photoRect={x:0,y:0,w:IW,h:IH};
+            textZone={x:0,y:IH,w:CW,h:Math.round(IH*.52*hs)}; break;
+          default:
+            CW=IW; CH=IH+TH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:TH};
+        }
 
-      // Use edited text if available, otherwise fall back to DOM fields
-      const _txt = id => (_dragPositions[id] && _dragPositions[id].text != null) ? _dragPositions[id].text : null;
-      const headline    = document.getElementById('show_headline').checked    ? (_txt('headline')    ?? document.getElementById('pt_headline').value.trim())    : '';
-      const publication = document.getElementById('show_publication').checked ? document.getElementById('pt_publication').value.trim() : '';
-      const category    = document.getElementById('show_category').checked    ? (_txt('badge')       ?? document.getElementById('pt_category').value.trim())    : '';
-      const subtitle    = document.getElementById('show_subtitle').checked    ? (_txt('subtitle')    ?? document.getElementById('pt_subtitle').value.trim())    : '';
-      const date        = document.getElementById('show_date').checked        ? document.getElementById('pt_date').value.trim()        : '';
+        const canvas = document.createElement('canvas');
+        canvas.width = CW; canvas.height = CH;
+        const ctx = canvas.getContext('2d');
 
-      const baseFS = Math.round(IW * .052 * scaleF);
+        // ── Background fill → photo ─────────────────────────────────────────────
+        ctx.fillStyle = panelBg;
+        ctx.fillRect(0, 0, CW, CH);
+        ctx.drawImage(img, photoRect.x, photoRect.y, photoRect.w, photoRect.h);
 
-      // Draw helper — resolves px, py, and maxW from stored position + widthPct
-      function drawAt(blockId, drawFn) {
-        const pos = _dragPositions[blockId];
-        if (!pos) return;
-        const px   = Math.round(pos.xPct   / 100 * IW);
-        const py   = Math.round(pos.yPct   / 100 * IH);
-        const maxW = pos.widthPct ? Math.round(pos.widthPct / 100 * IW) - Math.round(IW * .02) : IW * 0.88 - px;
-        drawFn(px, py, Math.max(60, maxW));
-      }
+        // ── Panel background with opacity + rounded corners ─────────────────────
+        ctx.save();
+        ctx.globalAlpha = panelOpac;
+        ctx.fillStyle = panelBg;
+        fillRoundRect(ctx, textZone.x, textZone.y, textZone.w, textZone.h, panelRadius);
+        // Accent stripe
+        ctx.fillStyle = panelAccent;
+        const stripeH = Math.max(3, Math.round(textZone.h * .014));
+        fillRoundRect(ctx, textZone.x, textZone.y, textZone.w, stripeH, panelRadius);
+        ctx.restore();
 
-      if (publication || date) drawAt('pub', (px, py, maxW) => {
-        const fs = Math.round(baseFS * .55);
-        ctx.font = `700 ${fs}px Inter,sans-serif`; ctx.textBaseline='alphabetic'; ctx.fillStyle=theme.pubColor;
-        if (publication) ctx.fillText(publication.toUpperCase(), px, py + fs);
-        if (date) { ctx.font=`400 ${Math.round(fs*.85)}px Inter,sans-serif`; ctx.fillStyle=theme.dateColor; ctx.fillText(date, px, py + fs*2.1); }
-      });
+        // Top bar (layout "ambos")
+        if (textZone._topBar) {
+          const tb = textZone._topBar;
+          ctx.save(); ctx.globalAlpha = panelOpac;
+          ctx.fillStyle = panelBg; ctx.fillRect(tb.x, tb.y, tb.w, tb.h);
+          ctx.fillStyle = panelAccent; ctx.fillRect(0, tb.y + tb.h - 2, tb.w, 2);
+          ctx.restore();
+          const pfs = Math.round(tb.h * .40);
+          if (document.getElementById('show_publication').checked && publication) {
+            ctx.font = `700 ${pfs}px Inter,sans-serif`; ctx.fillStyle = _col('pub', theme.pubColor);
+            ctx.textBaseline = 'middle'; ctx.fillText(publication.toUpperCase(), Math.round(tb.w * .04), tb.y + tb.h * .5);
+          }
+          if (document.getElementById('show_date').checked && date) {
+            ctx.font = `400 ${Math.round(pfs * .8)}px Inter,sans-serif`; ctx.fillStyle = theme.dateColor;
+            ctx.textBaseline = 'middle';
+            const dw = ctx.measureText(date).width;
+            ctx.fillText(date, tb.w - Math.round(tb.w * .04) - dw, tb.y + tb.h * .5);
+          }
+        }
 
-      if (category) drawAt('badge', (px, py, maxW) => {
-        ctx.font = `700 ${Math.round(baseFS*.5)}px Inter,sans-serif`;
-        const fg = themeName==='white'?'#ffffff':(themeName==='black_yellow'?'#000000':'#ffffff');
-        drawBadge(ctx, category, px, py, Math.round(baseFS*.5), theme.badgeColor, fg);
-      });
+        // Dividing line
+        const lineThick = 3;
+        if (['rodape','cabecalho','ambos','dividido'].includes(layout)) {
+          const ly = photoRect.y + photoRect.h;
+          ctx.fillStyle = panelAccent; ctx.fillRect(0, ly - lineThick, CW, lineThick * 2);
+        }
+        if (['col_esq','col_dir'].includes(layout)) {
+          const lx = photoRect.x === 0 ? photoRect.w : textZone.x;
+          ctx.fillStyle = panelAccent; ctx.fillRect(lx - lineThick, 0, lineThick * 2, CH);
+        }
 
-      if (headline) drawAt('headline', (px, py, maxW) => {
-        const fs = Math.round(baseFS); const lh = Math.round(fs*1.25);
-        ctx.font=`800 ${fs}px Inter,sans-serif`; ctx.fillStyle=theme.headlineColor; ctx.textBaseline='alphabetic';
-        ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=5; ctx.shadowOffsetY=2;
-        wrapText(ctx, headline, px, py+fs, maxW, lh);
-        ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
-      });
+        // ── Draw text at the positions dragged by the user ──────────────────────
+        // Drag percentages are relative to the displayed composite image, which
+        // has the same aspect as this canvas (CW×CH), so they map directly.
+        const baseFS = Math.round(IW * .052 * scaleF);
 
-      if (subtitle) drawAt('subtitle', (px, py, maxW) => {
-        const fs = Math.round(baseFS*.52);
-        ctx.font=`400 ${fs}px Inter,sans-serif`; ctx.fillStyle=theme.subtitleColor; ctx.textBaseline='alphabetic';
-        wrapText(ctx, subtitle, px, py+fs, maxW, Math.round(fs*1.5));
-      });
+        function drawAt(blockId, drawFn) {
+          const pos = _dragPositions[blockId];
+          if (!pos) return;
+          const px   = Math.round(pos.xPct   / 100 * CW);
+          const py   = Math.round(pos.yPct   / 100 * CH);
+          const maxW = pos.widthPct ? Math.round(pos.widthPct / 100 * CW) - Math.round(CW * .02) : CW * 0.88 - px;
+          drawFn(px, py, Math.max(60, maxW));
+        }
 
-      resolve(canvas.toDataURL('image/jpeg',.95));
+        if (publication || date) drawAt('pub', (px, py, maxW) => {
+          const fs = Math.round(baseFS * .55);
+          ctx.font = `700 ${fs}px Inter,sans-serif`; ctx.textBaseline = 'alphabetic';
+          ctx.fillStyle = _col('pub', theme.pubColor);
+          if (publication) ctx.fillText(publication.toUpperCase(), px, py + fs);
+          if (date) {
+            ctx.font = `400 ${Math.round(fs * .85)}px Inter,sans-serif`;
+            ctx.fillStyle = theme.dateColor;
+            ctx.fillText(date, px, py + fs * 2.1);
+          }
+        });
+
+        if (category) drawAt('badge', (px, py, maxW) => {
+          ctx.font = `700 ${Math.round(baseFS * .5)}px Inter,sans-serif`;
+          const bg = _col('badge', theme.badgeColor);
+          const fg = themeName==='white' ? '#ffffff' : (themeName==='black_yellow' ? '#000000' : '#ffffff');
+          drawBadge(ctx, category, px, py, Math.round(baseFS * .5), bg, fg);
+        });
+
+        if (headline) drawAt('headline', (px, py, maxW) => {
+          const fs = Math.round(baseFS); const lh = Math.round(fs * 1.25);
+          ctx.font = `800 ${fs}px Inter,sans-serif`;
+          ctx.fillStyle = _col('headline', theme.headlineColor);
+          ctx.textBaseline = 'alphabetic';
+          ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+          wrapText(ctx, headline, px, py + fs, maxW, lh);
+          ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        });
+
+        if (subtitle) drawAt('subtitle', (px, py, maxW) => {
+          const fs = Math.round(baseFS * .52);
+          ctx.font = `400 ${fs}px Inter,sans-serif`;
+          ctx.fillStyle = _col('subtitle', theme.subtitleColor);
+          ctx.textBaseline = 'alphabetic';
+          wrapText(ctx, subtitle, px, py + fs, maxW, Math.round(fs * 1.5));
+        });
+
+        resolve(canvas.toDataURL('image/jpeg', .95));
+      } catch(e) { reject(e); }
     };
     img.src = srcUrl;
   });
@@ -1626,12 +1940,11 @@ async function applyDragPositions() {
     cv.innerHTML = `<img src="${result}" alt="Cartaz">`;
   } else {
     cv.innerHTML = _buildPhotoStrip(currentUrls, true);
-    // Re-select the same thumb
     document.querySelectorAll('#photoStrip .photo-thumb').forEach((t,i) => t.classList.toggle('active', i===srcIdx));
   }
 
   _dragActive = false;
-  document.getElementById('dragModeBtn').textContent = '🖱️ Arrastar';
+  document.getElementById('dragModeBtn').textContent = '🖱️ Editar';
   document.getElementById('applyDragBtn').style.display = 'none';
   document.getElementById('applyDragBtn').disabled = false;
   document.getElementById('applyDragBtn').textContent = '✅ Confirmar';
@@ -1806,10 +2119,17 @@ function autoFillPosterText() {
   showToast('✨ Tudo preenchido automaticamente!');
 }
 
-// Save publication to localStorage on change
+// Save publication to localStorage on change; boot responsive canvas
 document.addEventListener('DOMContentLoaded', () => {
   const pub = localStorage.getItem('docscan_publication');
   if (pub) document.getElementById('pt_publication').value = pub;
+  // Set initial canvas aspect-ratio from sidebar inputs
+  syncCanvasAspect();
+  document.getElementById('cfg_width').addEventListener('input',  syncCanvasAspect);
+  document.getElementById('cfg_height').addEventListener('input', syncCanvasAspect);
+  // Also sync when preset setSize() changes the values programmatically
+  document.getElementById('cfg_width').addEventListener('change',  syncCanvasAspect);
+  document.getElementById('cfg_height').addEventListener('change', syncCanvasAspect);
 });
 document.getElementById('pt_publication').addEventListener('change', e => {
   localStorage.setItem('docscan_publication', e.target.value);
@@ -1845,6 +2165,32 @@ function onThemeChange() {
 }
 
 // ── Canvas helpers ────────────────────────────────────────────────────────────
+// Rounded-rect fill (falls back to regular fillRect when r=0)
+function fillRoundRect(ctx, x, y, w, h, r) {
+  if (!r || r <= 0) { ctx.fillRect(x, y, w, h); return; }
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);  ctx.arcTo(x+w, y,   x+w, y+r,   r);
+  ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x + r, y + h); ctx.arcTo(x,   y+h, x,   y+h-r, r);
+  ctx.lineTo(x, y + r);     ctx.arcTo(x,   y,   x+r, y,     r);
+  ctx.closePath(); ctx.fill();
+}
+
+// ── Panel settings helper ─────────────────────────────────────────────────────
+function updatePanelSetting(key, value) { _panelSettings[key] = value; }
+
+// ── Responsive canvas aspect-ratio ────────────────────────────────────────────
+// Always applies — even on a loaded canvas — so preset buttons give instant feedback.
+function syncCanvasAspect(overrideW, overrideH) {
+  const cv = document.getElementById('imgCanvas');
+  if (!cv) return;
+  const w = overrideW || parseInt(document.getElementById('cfg_width').value)  || 1024;
+  const h = overrideH || parseInt(document.getElementById('cfg_height').value) || 1024;
+  cv.style.aspectRatio = `${w} / ${h}`;
+}
+
 function wrapText(ctx, text, x, y, maxWidth, lineH) {
   const words = text.split(' ');
   let line = '', lines = [];
@@ -1882,13 +2228,8 @@ function drawTextZone(ctx, zone, data, theme, themeName) {
   const maxW    = w - pad * 2;
   const isWide  = w >= h * 1.4;
 
-  // Fundo sólido
-  ctx.fillStyle = theme.panelBg;
-  ctx.fillRect(x, y, w, h);
-
-  // Linha de acento
-  ctx.fillStyle = theme.badgeColor;
-  ctx.fillRect(x, y, w, Math.max(3, Math.round(h*.014)));
+  // Panel background is drawn by the caller (compositeNewsImage / applyDragPositions)
+  // with correct opacity/radius — drawTextZone only renders text content.
 
   const baseFS  = Math.round(Math.min(isWide ? h*.30 : w*.12, isWide ? w*.065 : h*.09) * scaleF);
   const headFS  = Math.min(baseFS, 72);
@@ -1971,24 +2312,29 @@ async function compositeNewsImage(imgOrUrl) {
     return new Promise((resolve, reject) => {
       try {
       const IW=img.naturalWidth||img.width, IH=img.naturalHeight||img.height;
+      const hs=_panelSettings.heightScale||1;
+      const panelBg    =_panelSettings.bgColor    ||theme.panelBg;
+      const panelAccent=_panelSettings.accentColor||theme.badgeColor;
+      const panelOpac  =_panelSettings.opacity??1;
+      const panelR     =_panelSettings.cornerRadius||0;
       let CW, CH, photoRect, textZone;
-      const TH = Math.round(IW*.42), TW = Math.round(IH*.42);
+      const TH = Math.round(IW*.42*hs), TW = Math.round(IH*.42*hs);
 
       switch(layout) {
         case 'rodape':
           CW=IW; CH=IH+TH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:TH}; break;
         case 'cabecalho':
-          const th2=Math.round(IW*.28); CW=IW; CH=IH+th2; textZone={x:0,y:0,w:CW,h:th2}; photoRect={x:0,y:th2,w:IW,h:IH}; break;
+          CW=IW; CH=IH+Math.round(IW*.28*hs); textZone={x:0,y:0,w:CW,h:Math.round(IW*.28*hs)}; photoRect={x:0,y:Math.round(IW*.28*hs),w:IW,h:IH}; break;
         case 'ambos':
-          const barH=Math.round(IW*.09), botH=Math.round(IW*.30);
-          CW=IW; CH=barH+IH+botH; photoRect={x:0,y:barH,w:IW,h:IH}; textZone={x:0,y:barH+IH,w:CW,h:botH};
-          textZone._topBar={x:0,y:0,w:CW,h:barH}; break;
+          CW=IW; CH=Math.round(IW*.09)+IH+Math.round(IW*.30*hs);
+          photoRect={x:0,y:Math.round(IW*.09),w:IW,h:IH}; textZone={x:0,y:Math.round(IW*.09)+IH,w:CW,h:Math.round(IW*.30*hs)};
+          textZone._topBar={x:0,y:0,w:CW,h:Math.round(IW*.09)}; break;
         case 'col_esq':
           CW=IW+TW; CH=IH; textZone={x:0,y:0,w:TW,h:CH}; photoRect={x:TW,y:0,w:IW,h:IH}; break;
         case 'col_dir':
           CW=IW+TW; CH=IH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:IW,y:0,w:TW,h:CH}; break;
         case 'dividido':
-          CW=IW; CH=IH+Math.round(IH*.52); photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:Math.round(IH*.52)}; break;
+          CW=IW; CH=IH+Math.round(IH*.52*hs); photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:Math.round(IH*.52*hs)}; break;
         default:
           CW=IW; CH=IH+TH; photoRect={x:0,y:0,w:IW,h:IH}; textZone={x:0,y:IH,w:CW,h:TH};
       }
@@ -1997,7 +2343,7 @@ async function compositeNewsImage(imgOrUrl) {
       const ctx=canvas.getContext('2d');
 
       // Fundo total
-      ctx.fillStyle=theme.panelBg; ctx.fillRect(0,0,CW,CH);
+      ctx.fillStyle=panelBg; ctx.fillRect(0,0,CW,CH);
 
       // Foto
       ctx.drawImage(img, photoRect.x, photoRect.y, photoRect.w, photoRect.h);
@@ -2005,8 +2351,10 @@ async function compositeNewsImage(imgOrUrl) {
       // Barra de topo (layout ambos)
       if (textZone._topBar) {
         const tb=textZone._topBar;
-        ctx.fillStyle=theme.panelBg; ctx.fillRect(tb.x,tb.y,tb.w,tb.h);
-        ctx.fillStyle=theme.badgeColor; ctx.fillRect(0,tb.y+tb.h-2,tb.w,2);
+        ctx.save(); ctx.globalAlpha=panelOpac;
+        ctx.fillStyle=panelBg; ctx.fillRect(tb.x,tb.y,tb.w,tb.h);
+        ctx.fillStyle=panelAccent; ctx.fillRect(0,tb.y+tb.h-2,tb.w,2);
+        ctx.restore();
         const pfs=Math.round(tb.h*.40);
         const showP=document.getElementById('show_publication').checked;
         const showD=document.getElementById('show_date').checked;
@@ -2024,15 +2372,24 @@ async function compositeNewsImage(imgOrUrl) {
       const lineThick=3;
       if (['rodape','cabecalho','ambos','dividido'].includes(layout)) {
         const ly=photoRect.y+photoRect.h;
-        ctx.fillStyle=theme.badgeColor; ctx.fillRect(0,ly-lineThick,CW,lineThick*2);
+        ctx.fillStyle=panelAccent; ctx.fillRect(0,ly-lineThick,CW,lineThick*2);
       }
       if (['col_esq','col_dir'].includes(layout)) {
         const lx=photoRect.x===0?photoRect.w:textZone.x;
-        ctx.fillStyle=theme.badgeColor; ctx.fillRect(lx-lineThick,0,lineThick*2,CH);
+        ctx.fillStyle=panelAccent; ctx.fillRect(lx-lineThick,0,lineThick*2,CH);
       }
 
-      // Zona de texto
-      drawTextZone(ctx, textZone, { headline, subtitle, category, publication, date }, theme, themeName);
+      // Zona de texto (panel bg + text inside)
+      // Apply opacity + corner radius to panel background
+      ctx.save(); ctx.globalAlpha=panelOpac;
+      ctx.fillStyle=panelBg;
+      fillRoundRect(ctx, textZone.x, textZone.y, textZone.w, textZone.h, panelR);
+      ctx.fillStyle=panelAccent;
+      fillRoundRect(ctx, textZone.x, textZone.y, textZone.w, Math.max(3,Math.round(textZone.h*.014)), panelR);
+      ctx.restore();
+      // Pass modified theme so drawTextZone uses panel colours
+      const compositeTheme = { ...theme, panelBg, badgeColor: panelAccent };
+      drawTextZone(ctx, textZone, { headline, subtitle, category, publication, date }, compositeTheme, themeName);
 
       resolve(canvas.toDataURL('image/jpeg',.95));
       } catch(e) { reject(e); }
