@@ -58,7 +58,27 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .api-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text2); flex-shrink: 0; transition: background .3s; }
 .api-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
 .api-dot.err { background: var(--red); }
-
+.titlebar-cpu {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.titlebar-cpu.error {
+  opacity: 0.6;
+  border-color: var(--red);
+}
+.titlebar-cpu.ok {
+  border-color: var(--green);
+  box-shadow: 0 0 4px rgba(16,185,129,0.2);
+}
 /* Sidebar */
 .sidebar {
   background: var(--bg2);
@@ -266,6 +286,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <span class="api-dot" id="apiDot"></span>
       <label for="ollamaUrl">Ollama URL:</label>
       <span id="ollamaUrl">http://localhost:11434</span>    </div>
+    <div class="titlebar-cpu" id="cpuTempDisplay">🌡️ --°C</div>
   </div>
 
   <!-- ── Sidebar ── -->
@@ -497,6 +518,46 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 <script>
 // ── pdfjs setup ────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── CPU Temperature Monitor (real-time from http://10.1.0.144:5050/) ───────
+const CPU_TEMP_URL = 'http://10.1.0.144:5050/';
+let tempInterval = null;
+
+async function fetchCPUTemp() {
+  const display = document.getElementById('cpuTempDisplay');
+  if (!display) return;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(CPU_TEMP_URL, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const data = await response.json();
+    // Agora inclui "temperatura" (português)
+    let tempValue = data.temperatura ?? data.temperature ?? data.temp ?? data.valor ?? data.value;
+    
+    if (tempValue !== null && !isNaN(tempValue)) {
+      const tempNum = parseFloat(tempValue);
+      display.innerHTML = `🌡️ ${tempNum.toFixed(1)}°C`;
+      display.classList.remove('error');
+      display.classList.add('ok');
+    } else {
+      throw new Error('Formato inválido');
+    }
+  } catch (err) {
+    display.innerHTML = `🌡️ ERRO`;
+    display.classList.add('error');
+    display.classList.remove('ok');
+    console.debug('CPU Temp fetch error:', err.message);
+  }
+}
+
+// Iniciar polling (a cada 3 segundos)
+if (typeof window !== 'undefined') {
+  fetchCPUTemp();
+  tempInterval = setInterval(fetchCPUTemp, 3000);
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 let records = [];
