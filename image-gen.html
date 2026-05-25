@@ -255,6 +255,46 @@ select:focus { border-color: var(--accent); }
 .batch-grid { display: grid; gap: 10px; padding: 12px; width: 100%; }
 .batch-grid img { width: 100%; border-radius: 8px; object-fit: contain; }
 
+/* Poster text fields */
+.poster-fields { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: rgba(245,158,11,.04); border: 1px solid rgba(245,158,11,.2); border-radius: 10px; }
+.poster-fields-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .9px; color: #f59e0b; margin-bottom: 2px; }
+.poster-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.poster-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+.poster-input-wrap label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .7px; color: var(--text2); }
+.poster-input-wrap input, .poster-input-wrap select, .poster-input-wrap textarea {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-family: var(--sans); font-size: 12px;
+  padding: 6px 9px; outline: none; width: 100%;
+}
+.poster-input-wrap input:focus, .poster-input-wrap select:focus, .poster-input-wrap textarea:focus { border-color: #f59e0b; }
+.poster-preview-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 10px;
+  background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.3);
+  color: var(--green); border-radius: 4px; padding: 2px 7px;
+}
+
+/* Layout picker */
+.layout-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.layout-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  cursor: pointer; padding: 6px; border-radius: 8px;
+  border: 2px solid var(--border); transition: border-color .15s, background .15s;
+  user-select: none;
+}
+.layout-opt:hover  { border-color: #f59e0b; background: rgba(245,158,11,.06); }
+.layout-opt.active { border-color: #f59e0b; background: rgba(245,158,11,.12); }
+.layout-opt span   { font-size: 10px; color: var(--text2); text-align: center; line-height: 1.3; }
+.layout-opt.active span { color: #f59e0b; font-weight: 700; }
+/* Mini diagram blocks */
+.ld { width: 60px; height: 42px; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,.1); }
+.ld-photo { background: #334155; flex-shrink: 0; }
+.ld-txt   { background: #1e3a5f; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 3px 4px; }
+.ld-h     { display: flex; flex-direction: row; flex: 1; overflow: hidden; }
+.ld-line  { background: rgba(255,255,255,.35); border-radius: 99px; height: 2px; }
+.ld-line.s { width: 55%; }
+.ld-line.t { background: #e11d48; width: 35%; height: 3px; border-radius: 2px; }
+.ld-div   { background: #f59e0b; height: 2px; width: 100%; flex-shrink: 0; }
+
 </style>
 </head>
 <body>
@@ -420,6 +460,164 @@ select:focus { border-color: var(--accent); }
               <div id="generatedPromptWrap" style="display:none" class="field">
                 <label><span class="field-dot" style="background:var(--green)"></span>Prompt Visual Gerado <span style="color:var(--text2);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(editável)</span></label>
                 <textarea id="generatedPrompt" rows="4" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3);resize:vertical;font-size:12px" placeholder="O prompt visual aparecerá aqui após converter…"></textarea>
+              </div>
+
+              <!-- Texto do cartaz (modo notícia) -->
+              <div id="posterTextWrap" style="display:none">
+                <div class="poster-fields">
+                  <div class="poster-fields-title">🗞️ Texto do Cartaz <span class="poster-preview-badge">✓ Aparece na imagem final</span></div>
+
+                  <div class="poster-input-wrap">
+                    <label>Manchete / Título</label>
+                    <textarea id="pt_headline" rows="2" style="resize:vertical" placeholder="ex: Homem mata companheira e suicida-se em Campanhã"></textarea>
+                  </div>
+
+                  <div class="poster-row">
+                    <div class="poster-input-wrap">
+                      <label>Publicação</label>
+                      <input type="text" id="pt_publication" value="DocScan" placeholder="Nome do jornal/site">
+                    </div>
+                    <div class="poster-input-wrap">
+                      <label>Categoria</label>
+                      <select id="pt_category">
+                        <option value="CRIME">CRIME</option>
+                        <option value="ÚLTIMA HORA">ÚLTIMA HORA</option>
+                        <option value="SOCIEDADE">SOCIEDADE</option>
+                        <option value="POLÍTICA">POLÍTICA</option>
+                        <option value="ECONOMIA">ECONOMIA</option>
+                        <option value="DESPORTO">DESPORTO</option>
+                        <option value="INTERNACIONAL">INTERNACIONAL</option>
+                        <option value="CULTURA">CULTURA</option>
+                        <option value="TECNOLOGIA">TECNOLOGIA</option>
+                        <option value="SAÚDE">SAÚDE</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="poster-row">
+                    <div class="poster-input-wrap">
+                      <label>Sub-título / Rodapé</label>
+                      <input type="text" id="pt_subtitle" placeholder="Frase curta de apoio (opcional)">
+                    </div>
+                    <div class="poster-input-wrap">
+                      <label>Data</label>
+                      <input type="text" id="pt_date" placeholder="ex: 25 de Maio de 2026">
+                    </div>
+                  </div>
+
+                  <div class="poster-input-wrap">
+                    <label>Tema de Cor</label>
+                    <select id="pt_theme">
+                      <option value="dark">⬛ Escuro (jornalístico)</option>
+                      <option value="red">🔴 Vermelho urgente</option>
+                      <option value="blue">🔵 Azul sóbrio</option>
+                      <option value="white">⬜ Branco elegante</option>
+                      <option value="black_yellow">🟡 Preto + Amarelo</option>
+                    </select>
+                  </div>
+
+                  <!-- Layout visual picker -->
+                  <div class="poster-input-wrap">
+                    <label>Layout do Cartaz <span style="color:var(--green);font-size:9px;font-weight:400;text-transform:none">texto nunca cobre a foto</span></label>
+                    <input type="hidden" id="pt_position" value="rodape">
+                    <div class="layout-picker">
+
+                      <!-- Rodapé -->
+                      <div class="layout-opt active" data-layout="rodape" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-photo" style="flex:1"></div>
+                          <div class="ld-div"></div>
+                          <div class="ld-txt" style="height:36%">
+                            <div class="ld-line t"></div>
+                            <div class="ld-line"></div>
+                            <div class="ld-line s"></div>
+                          </div>
+                        </div>
+                        <span>Rodapé</span>
+                      </div>
+
+                      <!-- Cabeçalho -->
+                      <div class="layout-opt" data-layout="cabecalho" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-txt" style="height:36%">
+                            <div class="ld-line"></div>
+                            <div class="ld-line s"></div>
+                            <div class="ld-line t"></div>
+                          </div>
+                          <div class="ld-div"></div>
+                          <div class="ld-photo" style="flex:1"></div>
+                        </div>
+                        <span>Cabeçalho</span>
+                      </div>
+
+                      <!-- Cima + Baixo -->
+                      <div class="layout-opt" data-layout="ambos" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-txt" style="height:22%">
+                            <div class="ld-line"></div>
+                          </div>
+                          <div class="ld-div"></div>
+                          <div class="ld-photo" style="flex:1"></div>
+                          <div class="ld-div"></div>
+                          <div class="ld-txt" style="height:28%">
+                            <div class="ld-line t"></div>
+                            <div class="ld-line s"></div>
+                          </div>
+                        </div>
+                        <span>Cima + Baixo</span>
+                      </div>
+
+                      <!-- Coluna Esquerda -->
+                      <div class="layout-opt" data-layout="col_esq" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-h">
+                            <div class="ld-txt" style="width:42%">
+                              <div class="ld-line t"></div>
+                              <div class="ld-line"></div>
+                              <div class="ld-line s"></div>
+                            </div>
+                            <div style="width:2px;background:#f59e0b;flex-shrink:0"></div>
+                            <div class="ld-photo" style="flex:1"></div>
+                          </div>
+                        </div>
+                        <span>Col. Esquerda</span>
+                      </div>
+
+                      <!-- Coluna Direita -->
+                      <div class="layout-opt" data-layout="col_dir" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-h">
+                            <div class="ld-photo" style="flex:1"></div>
+                            <div style="width:2px;background:#f59e0b;flex-shrink:0"></div>
+                            <div class="ld-txt" style="width:42%">
+                              <div class="ld-line t"></div>
+                              <div class="ld-line"></div>
+                              <div class="ld-line s"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <span>Col. Direita</span>
+                      </div>
+
+                      <!-- Dividido (50/50) -->
+                      <div class="layout-opt" data-layout="dividido" onclick="selectLayout(this)">
+                        <div class="ld">
+                          <div class="ld-photo" style="height:50%"></div>
+                          <div class="ld-div"></div>
+                          <div class="ld-txt" style="flex:1">
+                            <div class="ld-line t"></div>
+                            <div class="ld-line"></div>
+                            <div class="ld-line s"></div>
+                          </div>
+                        </div>
+                        <span>Dividido</span>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <button class="btn btn-ghost btn-sm" onclick="autoFillPosterText()" style="align-self:flex-start;font-size:11px">✨ Preencher automaticamente a partir da notícia</button>
+                </div>
               </div>
 
               <div class="field">
@@ -597,7 +795,7 @@ async function generate() {
     }
 
     currentUrls = loaded.map(x => x.url);
-    renderOutput(loaded, w, h, model, prompt);
+    await renderOutput(loaded, w, h, model, prompt);
     showStatus('ok', `✓ ${loaded.length} imagem(ns) gerada(s) com sucesso!`);
 
   } catch (err) {
@@ -661,7 +859,7 @@ function stopFakeProgress(pct) {
 }
 
 // ── Render output ─────────────────────────────────────────────────────────────
-function renderOutput(loaded, w, h, model, prompt) {
+function _renderOutputBase(loaded, w, h, model, prompt) {
   const canvas = document.getElementById('imgCanvas');
   canvas.classList.add('loaded');
   canvas.classList.remove('scrollable');
@@ -797,10 +995,11 @@ document.addEventListener('keydown', e => {
 
 // ── News Mode ─────────────────────────────────────────────────────────────────
 function toggleNewsMode(on) {
-  document.getElementById('newsModeAlert').style.display    = on ? '' : 'none';
-  document.getElementById('newsStyleRow').style.display     = on ? '' : 'none';
-  document.getElementById('convertBtn').style.display       = on ? '' : 'none';
+  document.getElementById('newsModeAlert').style.display       = on ? '' : 'none';
+  document.getElementById('newsStyleRow').style.display        = on ? '' : 'none';
+  document.getElementById('convertBtn').style.display          = on ? '' : 'none';
   document.getElementById('generatedPromptWrap').style.display = on ? '' : 'none';
+  document.getElementById('posterTextWrap').style.display      = on ? '' : 'none';
   document.getElementById('promptLabel').textContent = on
     ? '📰 Texto da Notícia (cola aqui)'
     : 'Descrição da Imagem';
@@ -816,10 +1015,15 @@ function toggleNewsMode(on) {
       'credits, fantasy, cartoon, anime, illustrated, painting, concept art, text overlay, title text, ' +
       'movie credits, film poster, book cover, advertisement, logo, brand, fake, CGI, 3D render, ' +
       'oversaturated, dramatic lighting, horror filter, art nouveau, deformed, ugly';
+    // Data de hoje em português
+    if (!document.getElementById('pt_date').value) {
+      document.getElementById('pt_date').value = new Date().toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
   } else {
     document.getElementById('neg_prompt').value =
       'blurry, bad anatomy, worst quality, low quality, watermark, text, signature, deformed, ugly';
     document.getElementById('generatedPromptWrap').style.display = 'none';
+    document.getElementById('posterTextWrap').style.display = 'none';
   }
 }
 
@@ -899,6 +1103,385 @@ function extractVisualElements(text, styleDef) {
   ];
 
   return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+// ── Auto-fill poster text from news ──────────────────────────────────────────
+function autoFillPosterText() {
+  const newsText = document.getElementById('prompt').value.trim();
+  if (!newsText) { showToast('⚠️ Primeiro cola o texto da notícia.'); return; }
+
+  // Extrair primeira frase como manchete
+  const cleaned = newsText
+    .replace(/create\s+(a\s+)?(poster|image|picture|photo|cover)[^:]*:\s*/gi, '')
+    .replace(/generate\s+(a\s+)?(poster|image|picture|photo)[:\s]*/gi, '')
+    .trim();
+
+  const sentences = cleaned.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 15);
+  const headline  = sentences[0] ? sentences[0].substring(0, 100) : cleaned.substring(0, 100);
+  const subtitle  = sentences[1] ? sentences[1].substring(0, 80)  : '';
+
+  // Detectar categoria pelo conteúdo
+  const lower = cleaned.toLowerCase();
+  let category = 'ÚLTIMA HORA';
+  if (/\b(mat|homicid|assassin|crime|roubo|furto|preso|detid|policia|GNR|PSP)\b/i.test(cleaned)) category = 'CRIME';
+  else if (/\b(govern|parlament|presiden|ministro|partido|eleições|voto)\b/i.test(cleaned)) category = 'POLÍTICA';
+  else if (/\b(econom|empresa|mercado|bolsa|PIB|inflação|emprego)\b/i.test(cleaned)) category = 'ECONOMIA';
+  else if (/\b(futebol|desporto|jogo|equipa|campeonato|gol|liga)\b/i.test(cleaned)) category = 'DESPORTO';
+  else if (/\b(saúde|hospital|doença|vírus|médico|paciente)\b/i.test(cleaned)) category = 'SAÚDE';
+
+  document.getElementById('pt_headline').value  = headline;
+  document.getElementById('pt_subtitle').value  = subtitle;
+  document.getElementById('pt_category').value  = category;
+  document.getElementById('pt_date').value = document.getElementById('pt_date').value ||
+    new Date().toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  showToast('✅ Campos do cartaz preenchidos!');
+}
+
+// ── Layout picker ─────────────────────────────────────────────────────────────
+function selectLayout(el) {
+  document.querySelectorAll('.layout-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pt_position').value = el.dataset.layout;
+}
+
+// ── Canvas Compositor ─────────────────────────────────────────────────────────
+const POSTER_THEMES = {
+  dark: {
+    panelBg:      '#0a0f1e',
+    badgeColor:   '#e11d48',
+    headlineColor:'#ffffff',
+    subtitleColor:'#94a3b8',
+    pubColor:     '#e2e8f0',
+    dateColor:    '#64748b',
+  },
+  red: {
+    panelBg:      '#7f1d1d',
+    badgeColor:   '#fbbf24',
+    headlineColor:'#ffffff',
+    subtitleColor:'#fecaca',
+    pubColor:     '#fff1f2',
+    dateColor:    '#fca5a5',
+  },
+  blue: {
+    panelBg:      '#1e3a8a',
+    badgeColor:   '#f59e0b',
+    headlineColor:'#ffffff',
+    subtitleColor:'#bfdbfe',
+    pubColor:     '#eff6ff',
+    dateColor:    '#93c5fd',
+  },
+  white: {
+    panelBg:      '#f8fafc',
+    badgeColor:   '#dc2626',
+    headlineColor:'#0f172a',
+    subtitleColor:'#475569',
+    pubColor:     '#1e293b',
+    dateColor:    '#94a3b8',
+  },
+  black_yellow: {
+    panelBg:      '#09090b',
+    badgeColor:   '#fbbf24',
+    headlineColor:'#fbbf24',
+    subtitleColor:'#fde68a',
+    pubColor:     '#fbbf24',
+    dateColor:    '#d97706',
+  },
+};
+
+// ── Helpers de Canvas ─────────────────────────────────────────────────────────
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const t = line + (line ? ' ' : '') + w;
+    if (ctx.measureText(t).width > maxWidth && line) { lines.push(line); line = w; }
+    else line = t;
+  }
+  if (line) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+  return lines.length;
+}
+
+function measureWrapLines(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  let line = '', count = 1;
+  for (const w of words) {
+    const t = line + (line ? ' ' : '') + w;
+    if (ctx.measureText(t).width > maxWidth && line) { count++; line = w; }
+    else line = t;
+  }
+  return count;
+}
+
+function drawBadge(ctx, text, x, y, fontSize, bgColor, textColor) {
+  const padX = fontSize * 0.7, padY = fontSize * 0.4;
+  const tw = ctx.measureText(text).width;
+  const bw = tw + padX * 2, bh = fontSize + padY * 2;
+  const r  = bh * 0.22;
+  ctx.fillStyle = bgColor;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + bw - r, y);
+  ctx.arcTo(x + bw, y, x + bw, y + r, r);
+  ctx.lineTo(x + bw, y + bh - r);
+  ctx.arcTo(x + bw, y + bh, x + bw - r, y + bh, r);
+  ctx.lineTo(x + r, y + bh);
+  ctx.arcTo(x, y + bh, x, y + bh - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + padX, y + bh / 2);
+  return bh;
+}
+
+// Preenche um rectângulo de texto (zona exclusiva, sem overlap)
+// Retorna a altura real usada
+function drawTextZone(ctx, zone, headline, subtitle, category, publication, date, theme, themeName) {
+  const { x, y, w, h, align } = zone;
+  const pad = Math.round(w * 0.06);
+  const tx  = align === 'right' ? x + pad : x + pad;
+  const maxW = w - pad * 2;
+
+  // Fundo sólido da zona
+  ctx.fillStyle = theme.panelBg;
+  ctx.fillRect(x, y, w, h);
+
+  // Linha de acento no topo da zona
+  ctx.fillStyle = theme.badgeColor;
+  ctx.fillRect(x, y, w, Math.max(3, Math.round(h * 0.012)));
+
+  const isWide = w >= h * 1.5; // zona horizontal (rodapé/cabeçalho) vs vertical (coluna)
+
+  // Tamanhos de fonte adaptativos à zona
+  const headFS  = isWide ? Math.round(Math.min(h * 0.28, w * 0.065)) : Math.round(Math.min(w * 0.11, h * 0.09));
+  const subFS   = Math.round(headFS * 0.52);
+  const badgeFS = Math.round(headFS * 0.45);
+  const pubFS   = Math.round(headFS * 0.38);
+  const lineH   = Math.round(headFS * 1.25);
+
+  // Calcular altura necessária (de baixo para cima ou de cima para baixo)
+  // Estratégia: posicionar de cima para baixo com padding
+  let curY = y + Math.round(h * 0.18);
+
+  // Publicação + data (linha topo)
+  ctx.font = `700 ${pubFS}px Outfit, sans-serif`;
+  ctx.fillStyle = theme.pubColor;
+  ctx.textBaseline = 'alphabetic';
+  if (publication) ctx.fillText(publication.toUpperCase(), tx, curY);
+  if (date) {
+    ctx.fillStyle = theme.dateColor;
+    ctx.font = `400 ${pubFS * 0.85}px Outfit, sans-serif`;
+    const dw = ctx.measureText(date).width;
+    const dateX = align === 'right' || !isWide ? tx : x + w - pad - dw;
+    if (isWide) ctx.fillText(date, dateX, curY);
+  }
+  curY += Math.round(pubFS * 1.6);
+
+  // Badge categoria
+  ctx.font = `700 ${badgeFS}px Outfit, sans-serif`;
+  const badgeTextCol = (themeName === 'white') ? '#ffffff' : (themeName === 'black_yellow' ? '#000000' : '#ffffff');
+  const bh = drawBadge(ctx, category, tx, curY, badgeFS, theme.badgeColor, badgeTextCol);
+  curY += bh + Math.round(headFS * 0.55);
+
+  // Manchete
+  if (headline) {
+    ctx.font = `800 ${headFS}px Outfit, sans-serif`;
+    ctx.fillStyle = theme.headlineColor;
+    ctx.textBaseline = 'alphabetic';
+    const nLines = wrapText(ctx, headline, tx, curY, maxW, lineH);
+    curY += nLines * lineH + Math.round(headFS * 0.35);
+  }
+
+  // Sub-título
+  if (subtitle) {
+    ctx.font = `400 ${subFS}px Outfit, sans-serif`;
+    ctx.fillStyle = theme.subtitleColor;
+    ctx.textBaseline = 'alphabetic';
+    wrapText(ctx, subtitle, tx, curY, maxW, Math.round(subFS * 1.45));
+  }
+}
+
+// ── Compositor principal ──────────────────────────────────────────────────────
+async function compositeNewsImage(imgUrl) {
+  const headline    = document.getElementById('pt_headline').value.trim();
+  const publication = document.getElementById('pt_publication').value.trim() || 'DocScan';
+  const category    = document.getElementById('pt_category').value.trim();
+  const subtitle    = document.getElementById('pt_subtitle').value.trim();
+  const date        = document.getElementById('pt_date').value.trim();
+  const themeName   = document.getElementById('pt_theme').value;
+  const layout      = document.getElementById('pt_position').value || 'rodape';
+  const theme       = POSTER_THEMES[themeName] || POSTER_THEMES.dark;
+
+  try { await document.fonts.load('800 72px Outfit'); await document.fonts.load('400 28px Outfit'); } catch {}
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const IW = img.width;   // largura original da imagem IA
+      const IH = img.height;  // altura original
+
+      // ── Calcular dimensões do canvas e zonas conforme o layout ──────────────
+      let CW, CH;          // dimensões do canvas final
+      let photoRect;       // { x, y, w, h } onde a foto é desenhada no canvas
+      let textZone;        // { x, y, w, h, align } zona dedicada ao texto
+
+      const TEXT_H_RATIO = 0.42;  // altura da zona de texto relativa à foto
+      const COL_W_RATIO  = 0.42;  // largura da coluna de texto
+
+      switch (layout) {
+
+        case 'rodape':
+          // Canvas cresce para baixo — foto intacta em cima, painel de texto em baixo
+          CW = IW; CH = IH + Math.round(IW * TEXT_H_RATIO);
+          photoRect = { x: 0, y: 0, w: IW, h: IH };
+          textZone  = { x: 0, y: IH, w: CW, h: CH - IH, align: 'left' };
+          break;
+
+        case 'cabecalho':
+          // Canvas cresce para cima — painel de texto em cima, foto intacta em baixo
+          const topH = Math.round(IW * 0.28);
+          CW = IW; CH = IH + topH;
+          textZone  = { x: 0, y: 0, w: CW, h: topH, align: 'left' };
+          photoRect = { x: 0, y: topH, w: IW, h: IH };
+          break;
+
+        case 'ambos':
+          // Barra fina em cima (publicação/data) + foto + painel manchete em baixo
+          const barH = Math.round(IW * 0.10);
+          const botH = Math.round(IW * 0.32);
+          CW = IW; CH = barH + IH + botH;
+          // zona do topo (só pub + data)
+          photoRect  = { x: 0, y: barH, w: IW, h: IH };
+          textZone   = { x: 0, y: barH + IH, w: CW, h: botH, align: 'left' };
+          // barra topo desenhada à parte
+          textZone._topBar = { x: 0, y: 0, w: CW, h: barH };
+          break;
+
+        case 'col_esq':
+          // Canvas cresce lateralmente — coluna de texto à esquerda, foto à direita
+          const colW_esq = Math.round(IH * COL_W_RATIO);
+          CW = IW + colW_esq; CH = IH;
+          textZone  = { x: 0,       y: 0, w: colW_esq, h: CH, align: 'left' };
+          photoRect = { x: colW_esq, y: 0, w: IW,      h: IH };
+          break;
+
+        case 'col_dir':
+          // Foto à esquerda, coluna de texto à direita
+          const colW_dir = Math.round(IH * COL_W_RATIO);
+          CW = IW + colW_dir; CH = IH;
+          photoRect = { x: 0,  y: 0, w: IW,      h: IH };
+          textZone  = { x: IW, y: 0, w: colW_dir, h: CH, align: 'left' };
+          break;
+
+        case 'dividido':
+          // Foto na metade superior, painel na metade inferior (canvas mantém proporção 1:1 aprox.)
+          CW = IW; CH = IH + Math.round(IH * 0.55);
+          photoRect = { x: 0, y: 0,  w: IW, h: IH };
+          textZone  = { x: 0, y: IH, w: CW, h: Math.round(IH * 0.55), align: 'left' };
+          break;
+
+        default:
+          CW = IW; CH = IH + Math.round(IW * TEXT_H_RATIO);
+          photoRect = { x: 0, y: 0, w: IW, h: IH };
+          textZone  = { x: 0, y: IH, w: CW, h: CH - IH, align: 'left' };
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = CW;
+      canvas.height = CH;
+      const ctx = canvas.getContext('2d');
+
+      // Fundo do canvas (para zonas sem foto)
+      ctx.fillStyle = theme.panelBg;
+      ctx.fillRect(0, 0, CW, CH);
+
+      // Desenhar foto na sua zona
+      ctx.drawImage(img, photoRect.x, photoRect.y, photoRect.w, photoRect.h);
+
+      // Barra topo (layout "ambos")
+      if (textZone._topBar) {
+        const tb = textZone._topBar;
+        ctx.fillStyle = theme.panelBg;
+        ctx.fillRect(tb.x, tb.y, tb.w, tb.h);
+        ctx.fillStyle = theme.badgeColor;
+        ctx.fillRect(tb.x, tb.y, tb.w, Math.max(3, Math.round(tb.h * 0.05)));
+        const pubFS = Math.round(tb.h * 0.42);
+        ctx.font = `700 ${pubFS}px Outfit, sans-serif`;
+        ctx.fillStyle = theme.pubColor;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(publication.toUpperCase(), Math.round(tb.w * 0.04), tb.y + tb.h * 0.55);
+        if (date) {
+          ctx.font = `400 ${Math.round(pubFS * 0.75)}px Outfit, sans-serif`;
+          ctx.fillStyle = theme.dateColor;
+          const dw = ctx.measureText(date).width;
+          ctx.fillText(date, tb.w - Math.round(tb.w * 0.04) - dw, tb.y + tb.h * 0.55);
+        }
+      }
+
+      // Linha divisória dourada entre foto e texto (layouts verticais)
+      if (['rodape','cabecalho','ambos','dividido'].includes(layout)) {
+        const lineY = photoRect.y + photoRect.h;
+        ctx.fillStyle = theme.badgeColor;
+        ctx.fillRect(0, lineY - 2, CW, 4);
+      }
+      // Linha divisória vertical (layouts de coluna)
+      if (['col_esq','col_dir'].includes(layout)) {
+        const lineX = photoRect.x === 0 ? photoRect.w : textZone.x;
+        ctx.fillStyle = theme.badgeColor;
+        ctx.fillRect(lineX - 2, 0, 4, CH);
+      }
+
+      // Desenhar zona de texto
+      drawTextZone(ctx, textZone, headline, subtitle, category, publication, date, theme, themeName);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.94));
+    };
+    img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+    img.src = imgUrl;
+  });
+}
+
+// ── renderOutput principal (suporta modo notícia) ────────────────────────────
+async function renderOutput(loaded, w, h, model, prompt) {
+  const newsMode = document.getElementById('cfg_news_mode').checked;
+  if (!newsMode) { _renderOutputBase(loaded, w, h, model, prompt); return; }
+
+  // Mostrar spinner de composição
+  const canvas = document.getElementById('imgCanvas');
+  canvas.innerHTML = `<div style="text-align:center;color:var(--text2);padding:30px"><span class="spin" style="font-size:32px">🖼️</span><br><br><strong style="color:var(--text)">A compor cartaz…</strong><br><span style="font-size:12px">A sobrepor texto na imagem</span></div>`;
+  canvas.classList.add('loaded');
+
+  // Compositor para cada imagem
+  const results = await Promise.allSettled(loaded.map(item => compositeNewsImage(item.url)));
+  const composited = results
+    .map((r, i) => ({ ok: r.status === 'fulfilled', dataUrl: r.value, seed: loaded[i].seed }))
+    .filter(x => x.ok);
+
+  if (!composited.length) {
+    _renderOutputBase(loaded, w, h, model, prompt);
+    showToast('⚠️ Compositor falhou — a mostrar imagem sem texto.');
+    return;
+  }
+
+  // Substituir currentUrls pelas dataURLs compostas (para download)
+  currentUrls = composited.map(x => x.dataUrl);
+
+  if (composited.length === 1) {
+    canvas.innerHTML = `<img src="${composited[0].dataUrl}" alt="Cartaz gerado">`;
+  } else {
+    canvas.innerHTML = `<div class="batch-grid" style="grid-template-columns:repeat(2,1fr)">
+      ${composited.map((x, i) => `<img src="${x.dataUrl}" alt="Cartaz ${i+1}">`).join('')}
+    </div>`;
+  }
+
+  const meta = document.getElementById('imgMeta');
+  meta.textContent = `Modelo: ${model}  •  ${w}×${h}px  •  Seed: ${loaded.map(x=>x.seed).join(', ')}  •  🗞️ Cartaz composto`;
+  meta.style.display = 'block';
+  document.getElementById('downloadBtn').style.display   = '';
+  document.getElementById('addGalleryBtn').style.display = '';
 }
 
 </script>
