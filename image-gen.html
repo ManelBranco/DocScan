@@ -29,7 +29,7 @@
 
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
 
-.shell { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 52px 1fr; height: 100vh; }
+.shell { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 52px 1fr; height: 100vh; overflow: hidden; }
 
 /* Title bar */
 .titlebar {
@@ -65,6 +65,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   overflow-y: auto; overflow-x: hidden;
+  min-height: 0;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
@@ -109,13 +110,35 @@ select:focus { border-color: var(--accent); }
 /* Main */
 .main {
   overflow-y: auto;
+  min-height: 0;
   background: var(--bg);
   display: flex; flex-direction: column;
-  gap: 20px; padding: 28px;
+  gap: 16px; padding: 20px 24px;
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* Two-column split layout */
+.split {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.split-left  { display: flex; flex-direction: column; gap: 12px; }
+.split-right {
+  display: flex; flex-direction: column; gap: 12px;
+  align-self: start;
+  position: sticky; top: 0;
+}
+
+/* Faz o card do prompt crescer para preencher a coluna esquerda */
+.split-left > .card { flex: 1; display: flex; flex-direction: column; }
+.split-left > .card > .card-body { flex: 1; display: flex; flex-direction: column; }
+.split-left .prompt-wrap { flex: 1; display: flex; flex-direction: column; }
+.split-left .prompt-wrap > .field:first-child { flex: 1; display: flex; flex-direction: column; }
+.split-left .prompt-wrap > .field:first-child > textarea { flex: 1; resize: none; }
 
 .page-title { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
 .page-title em { color: var(--accent2); font-style: normal; }
@@ -151,6 +174,7 @@ select:focus { border-color: var(--accent); }
 .btn-purple { background: var(--purple); color: #fff; font-weight: 700; }
 .btn-purple:hover { opacity: .9; }
 .btn-purple:disabled { opacity: .4; pointer-events: none; }
+.btn-purple.btn-sm { font-size: 12px; padding: 5px 14px; }
 .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 .btn-ghost:disabled { opacity: .4; pointer-events: none; }
@@ -174,14 +198,14 @@ select:focus { border-color: var(--accent); }
   background: var(--surface2);
   border: 2px dashed var(--border);
   border-radius: 12px;
-  min-height: 360px;
+  min-height: 420px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; position: relative; overflow: hidden;
   transition: border-color .2s;
 }
 .img-canvas.loaded { border-style: solid; border-color: var(--purple); }
 .img-canvas img {
-  max-width: 100%; max-height: 600px;
+  max-width: 100%; max-height: 70vh;
   object-fit: contain; display: block;
   border-radius: 8px;
 }
@@ -230,6 +254,7 @@ select:focus { border-color: var(--accent); }
 /* Batch images layout */
 .batch-grid { display: grid; gap: 10px; padding: 12px; width: 100%; }
 .batch-grid img { width: 100%; border-radius: 8px; object-fit: contain; }
+
 </style>
 </head>
 <body>
@@ -259,11 +284,36 @@ select:focus { border-color: var(--accent); }
         <div class="ctrl-label">Modelo</div>
         <select id="cfg_model">
           <option value="flux">Flux — Geral</option>
-          <option value="flux-realism">Flux Realism — Fotorrealismo</option>
+          <option value="flux-realism" selected>Flux Realism — Fotorrealismo</option>
           <option value="flux-anime">Flux Anime</option>
           <option value="flux-3d">Flux 3D</option>
           <option value="any-dark">Any Dark — Sombrio/Gótico</option>
           <option value="turbo">Turbo — Mais Rápido</option>
+        </select>
+      </div>
+
+      <!-- Modo Notícia -->
+      <div class="ctrl-row">
+        <div class="ctrl-label">Modo Editorial</div>
+        <label class="toggle-row">
+          <input type="checkbox" id="cfg_news_mode" onchange="toggleNewsMode(this.checked)">
+          <div>
+            <div class="ctrl-label" style="margin:0">📰 Modo Notícia</div>
+            <div style="font-size:10px;color:var(--text2);margin-top:2px">Converte texto de notícia em fotografia editorial profissional</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Estilo Editorial -->
+      <div class="ctrl-row" id="newsStyleRow" style="display:none">
+        <div class="ctrl-label">Estilo da Imagem</div>
+        <select id="cfg_news_style">
+          <option value="press">📸 Fotografia de Imprensa</option>
+          <option value="documentary">🎞️ Fotografia Documental</option>
+          <option value="crime">🔍 Cena Policial / Crime</option>
+          <option value="portrait">🧑 Retrato Jornalístico</option>
+          <option value="scene">🏙️ Cena Urbana / Local</option>
+          <option value="social">👥 Impacto Social</option>
         </select>
       </div>
 
@@ -327,76 +377,108 @@ select:focus { border-color: var(--accent); }
   <!-- Main -->
   <div class="main">
 
+    <!-- Header -->
     <div>
       <div class="page-title">🎨 Gerador de <em>Imagens</em></div>
       <div class="page-sub">Gere imagens com IA a partir de texto — grátis, sem instalar nada</div>
     </div>
 
-    <!-- Prompt card -->
-    <div class="card">
-      <div class="card-head">
-        <h2>✏️ Prompt</h2>
-      </div>
-      <div class="card-body">
-        <div class="prompt-wrap">
-          <div class="field">
-            <label><span class="field-dot" style="background:var(--purple)"></span>Descrição da Imagem</label>
-            <textarea id="prompt" rows="4" placeholder="Descreve a imagem que queres gerar… ex: a futuristic city at night, cyberpunk, neon lights, ultra detailed, 4k"></textarea>
-          </div>
-          <div class="field">
-            <label><span class="field-dot" style="background:var(--red)"></span>Prompt Negativo <span style="color:var(--text2);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(o que evitar)</span></label>
-            <textarea id="neg_prompt" rows="2" class="neg-area" placeholder="ex: blurry, bad anatomy, worst quality…">blurry, bad anatomy, worst quality, low quality, watermark, text, signature, deformed, ugly</textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-purple" id="generateBtn" onclick="generate()">✨ Gerar Imagem</button>
-            <button class="btn btn-ghost" id="cancelBtn" onclick="cancelGenerate()" style="display:none">⏹ Cancelar</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearAll()">✕ Limpar</button>
-          </div>
-          <div style="font-size:11px;color:var(--text2)">💡 Dica: Escreve em <strong>inglês</strong> para melhores resultados. Atalho: <strong>Ctrl+Enter</strong></div>
-        </div>
-      </div>
-    </div>
+    <!-- Split layout: esquerda = prompt | direita = resultado -->
+    <div class="split">
 
-    <!-- Status -->
-    <div class="statusbar scanning" id="statusBox" style="display:none"></div>
+      <!-- COLUNA ESQUERDA -->
+      <div class="split-left">
 
-    <!-- Progress -->
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill" id="progressFill"></div>
-      </div>
-    </div>
+        <!-- Prompt card -->
+        <div class="card">
+          <div class="card-head">
+            <h2>✏️ Prompt</h2>
+            <div class="card-actions">
+              <button class="btn btn-ghost btn-sm" onclick="clearAll()">✕ Limpar</button>
+              <button class="btn btn-ghost btn-sm" id="cancelBtn" onclick="cancelGenerate()" style="display:none">⏹ Cancelar</button>
+              <button class="btn btn-purple btn-sm" id="generateBtn" onclick="generate()">✨ Gerar</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="prompt-wrap">
 
-    <!-- Output -->
-    <div class="card">
-      <div class="card-head">
-        <h2>🖼️ Resultado</h2>
-        <div class="card-actions">
-          <button class="btn btn-ghost btn-sm" id="downloadBtn" onclick="downloadCurrent()" style="display:none">⬇️ Guardar</button>
-          <button class="btn btn-ghost btn-sm" id="addGalleryBtn" onclick="addToGallery()" style="display:none">➕ Galeria</button>
-        </div>
-      </div>
-      <div class="card-body" style="padding:18px">
-        <div class="img-canvas" id="imgCanvas">
-          <div class="img-placeholder">
-            <div class="ico">🎨</div>
-            <p>A imagem gerada aparecerá aqui.<br>Escreva um prompt e clique em <strong>Gerar Imagem</strong>.</p>
+              <!-- Aviso modo notícia ativo -->
+              <div id="newsModeAlert" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px 13px;font-size:12px;color:#f59e0b;line-height:1.6">
+                📰 <strong>Modo Notícia Ativo</strong> — Cola o texto da notícia abaixo. O prompt será convertido automaticamente em fotografia editorial profissional antes de gerar.
+              </div>
+
+              <div class="field">
+                <label>
+                  <span class="field-dot" style="background:var(--purple)"></span>
+                  <span id="promptLabel">Descrição da Imagem</span>
+                  <button id="convertBtn" onclick="convertNewsPrompt()" class="btn btn-ghost btn-sm" style="display:none;margin-left:auto;font-size:11px;padding:3px 10px">🔄 Converter Notícia</button>
+                </label>
+                <textarea id="prompt" rows="5" placeholder="Descreve a imagem que queres gerar… ex: a futuristic city at night, cyberpunk, neon lights, ultra detailed, 4k"></textarea>
+              </div>
+
+              <!-- Preview do prompt gerado (modo notícia) -->
+              <div id="generatedPromptWrap" style="display:none" class="field">
+                <label><span class="field-dot" style="background:var(--green)"></span>Prompt Visual Gerado <span style="color:var(--text2);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(editável)</span></label>
+                <textarea id="generatedPrompt" rows="4" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.3);resize:vertical;font-size:12px" placeholder="O prompt visual aparecerá aqui após converter…"></textarea>
+              </div>
+
+              <div class="field">
+                <label><span class="field-dot" style="background:var(--red)"></span>Prompt Negativo <span style="color:var(--text2);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(o que evitar)</span></label>
+                <textarea id="neg_prompt" rows="3" class="neg-area" placeholder="ex: blurry, bad anatomy, worst quality…">blurry, bad anatomy, worst quality, low quality, watermark, text, signature, deformed, ugly</textarea>
+              </div>
+              <div style="font-size:11px;color:var(--text2)">💡 Dica: Escreve em <strong>inglês</strong> para melhores resultados. Atalho: <strong>Ctrl+Enter</strong></div>
+            </div>
           </div>
         </div>
-        <div id="imgMeta" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--text2);display:none"></div>
-      </div>
-    </div>
 
-    <!-- Gallery -->
-    <div class="card" id="galleryCard" style="display:none">
-      <div class="card-head">
-        <h2>🗂️ Galeria desta Sessão</h2>
-        <div class="card-actions">
-          <button class="btn btn-ghost btn-sm" onclick="clearGallery()">🗑️ Limpar Galeria</button>
+        <!-- Status -->
+        <div class="statusbar scanning" id="statusBox" style="display:none"></div>
+
+        <!-- Progress -->
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
         </div>
+
       </div>
-      <div class="card-body">
-        <div class="gallery-grid" id="galleryGrid"></div>
+
+      <!-- COLUNA DIREITA -->
+      <div class="split-right">
+
+        <!-- Output -->
+        <div class="card">
+          <div class="card-head">
+            <h2>🖼️ Resultado</h2>
+            <div class="card-actions">
+              <button class="btn btn-ghost btn-sm" id="downloadBtn" onclick="downloadCurrent()" style="display:none">⬇️ Guardar</button>
+              <button class="btn btn-ghost btn-sm" id="addGalleryBtn" onclick="addToGallery()" style="display:none">➕ Galeria</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:18px">
+            <div class="img-canvas" id="imgCanvas">
+              <div class="img-placeholder">
+                <div class="ico">🎨</div>
+                <p>A imagem gerada aparecerá aqui.<br>Escreva um prompt e clique em <strong>Gerar</strong>.</p>
+              </div>
+            </div>
+            <div id="imgMeta" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--text2);display:none"></div>
+          </div>
+        </div>
+
+        <!-- Gallery -->
+        <div class="card" id="galleryCard" style="display:none">
+          <div class="card-head">
+            <h2>🗂️ Galeria desta Sessão</h2>
+            <div class="card-actions">
+              <button class="btn btn-ghost btn-sm" onclick="clearGallery()">🗑️ Limpar Galeria</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="gallery-grid" id="galleryGrid"></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -454,7 +536,19 @@ function buildUrl(prompt, neg, seed, model, w, h, enhance) {
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 async function generate() {
-  const prompt = document.getElementById('prompt').value.trim();
+  // Modo Notícia: usar o prompt visual gerado (ou converter automaticamente)
+  const newsMode = document.getElementById('cfg_news_mode').checked;
+  let promptRaw;
+  if (newsMode) {
+    const genEl = document.getElementById('generatedPrompt');
+    if (!genEl.value.trim()) convertNewsPrompt();   // auto-converter se vazio
+    promptRaw = genEl.value.trim();
+    if (!promptRaw) { showStatus('warn', '⚠️ Escreve o texto da notícia e clica em "Converter".'); return; }
+  } else {
+    promptRaw = document.getElementById('prompt').value.trim();
+  }
+
+  const prompt = promptRaw;
   if (!prompt) { showStatus('warn', '⚠️ Escreve um prompt antes de gerar.'); return; }
 
   const neg     = document.getElementById('neg_prompt').value.trim();
@@ -570,7 +664,9 @@ function stopFakeProgress(pct) {
 function renderOutput(loaded, w, h, model, prompt) {
   const canvas = document.getElementById('imgCanvas');
   canvas.classList.add('loaded');
+  canvas.classList.remove('scrollable');
   canvas.style.cssText = '';
+  canvas.scrollTop = 0;
 
   if (loaded.length === 1) {
     canvas.innerHTML = `<img src="${loaded[0].url}" alt="Imagem gerada" crossorigin="anonymous">`;
@@ -698,6 +794,113 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') generate();
 });
+
+// ── News Mode ─────────────────────────────────────────────────────────────────
+function toggleNewsMode(on) {
+  document.getElementById('newsModeAlert').style.display    = on ? '' : 'none';
+  document.getElementById('newsStyleRow').style.display     = on ? '' : 'none';
+  document.getElementById('convertBtn').style.display       = on ? '' : 'none';
+  document.getElementById('generatedPromptWrap').style.display = on ? '' : 'none';
+  document.getElementById('promptLabel').textContent = on
+    ? '📰 Texto da Notícia (cola aqui)'
+    : 'Descrição da Imagem';
+  document.getElementById('prompt').placeholder = on
+    ? 'Cola aqui o texto da notícia ou o título/resumo do acontecimento…'
+    : 'Descreve a imagem que queres gerar… ex: a futuristic city at night, cyberpunk, neon lights, ultra detailed, 4k';
+
+  // Modelo → flux-realism obrigatório para notícias
+  if (on) {
+    document.getElementById('cfg_model').value = 'flux-realism';
+    document.getElementById('neg_prompt').value =
+      'blurry, bad anatomy, worst quality, low quality, watermark, movie poster, film title, movie title, ' +
+      'credits, fantasy, cartoon, anime, illustrated, painting, concept art, text overlay, title text, ' +
+      'movie credits, film poster, book cover, advertisement, logo, brand, fake, CGI, 3D render, ' +
+      'oversaturated, dramatic lighting, horror filter, art nouveau, deformed, ugly';
+  } else {
+    document.getElementById('neg_prompt').value =
+      'blurry, bad anatomy, worst quality, low quality, watermark, text, signature, deformed, ugly';
+    document.getElementById('generatedPromptWrap').style.display = 'none';
+  }
+}
+
+// Dicionário de estilos para fotografia editorial
+const NEWS_STYLE_PROMPTS = {
+  press: {
+    prefix: 'Professional editorial press photography, photojournalistic style, newspaper front page quality photograph, documentary news photo, canon 5D mark IV shot, f/2.8, sharp focus, natural lighting, authentic journalism photography',
+    suffix: 'award-winning photojournalism, AP wire photo quality, Reuters press photo, dramatic composition, real life documentary'
+  },
+  documentary: {
+    prefix: 'Documentary photography, photorealistic editorial image, reportage photo style, honest and raw visual storytelling, natural light photography, 35mm film look, journalistic integrity',
+    suffix: 'Magnum Photos quality, documentary evidence, real moment captured, Pulitzer prize photography style'
+  },
+  crime: {
+    prefix: 'Crime scene documentary photography, police investigation reportage, somber editorial photograph, forensic scene documentation style, serious news coverage photo, moody realistic lighting',
+    suffix: 'crime journalism photography, serious investigative press photo, gritty realistic, no gore, tasteful coverage, professional police beat reporter photography'
+  },
+  portrait: {
+    prefix: 'Journalistic portrait photography, editorial headshot, news interview photo, professional press portrait, natural environmental portrait, shallow depth of field',
+    suffix: 'newspaper portrait style, editorial magazine photography, candid journalistic portrait, authentic documentary portrait'
+  },
+  scene: {
+    prefix: 'Urban documentary photography, location establishing shot, city reportage photo, realistic street photography, environmental context photograph, architectural editorial photo',
+    suffix: 'location-driven journalism photo, urban documentary style, Google Street View quality realism, establishing shot photography'
+  },
+  social: {
+    prefix: 'Social documentary photography, humanitarian photojournalism, community impact photography, empathy-driven editorial photo, human interest story photography, realistic editorial image',
+    suffix: 'social issue documentary, World Press Photo award quality, human condition photography, NGO reportage style'
+  }
+};
+
+function convertNewsPrompt() {
+  const newsText = document.getElementById('prompt').value.trim();
+  if (!newsText) {
+    showToast('⚠️ Escreve ou cola o texto da notícia primeiro.');
+    return;
+  }
+
+  const style = document.getElementById('cfg_news_style').value;
+  const styleDef = NEWS_STYLE_PROMPTS[style] || NEWS_STYLE_PROMPTS.press;
+
+  // Extrair elementos visuais chave do texto da notícia
+  const visualPrompt = extractVisualElements(newsText, styleDef);
+
+  document.getElementById('generatedPrompt').value = visualPrompt;
+  document.getElementById('generatedPromptWrap').style.display = '';
+  showToast('✅ Prompt visual gerado! Edita se necessário e clica em Gerar.');
+}
+
+function extractVisualElements(text, styleDef) {
+  // Limpar texto de instruções de sistema tipo "Create a poster for..."
+  let cleaned = text
+    .replace(/create\s+(a\s+)?(poster|image|picture|photo|cover)\s+(for\s+)?(the\s+)?(cover\s+of\s+)?(this\s+)?(news\s+story[:\s]*)?\s*/gi, '')
+    .replace(/generate\s+(a\s+)?(poster|image|picture|photo)[:\s]*/gi, '')
+    .trim();
+
+  // Detectar elementos: local, ação, pessoas
+  const locationMatch = cleaned.match(/\bin\s+([A-ZÁÉÍÓÚ][a-záéíóú]+(?:[\s,]+[A-ZÁÉÍÓÚ]?[a-záéíóú]+)*)/i);
+  const location = locationMatch ? locationMatch[1].split(/[,\.]/)[0].trim() : null;
+
+  // Gerar uma descrição visual condensada (máx ~15 palavras da história)
+  const sentences = cleaned.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const mainSentence = sentences[0] ? sentences[0].trim() : cleaned.substring(0, 120);
+
+  // Construir prompt visual profissional
+  let visualDesc = mainSentence
+    .replace(/\b(he|she|they|man|woman|person|homem|mulher|pessoa)\b/gi, 'a person')
+    .substring(0, 140);
+
+  const parts = [
+    styleDef.prefix,
+    'depicting:',
+    visualDesc,
+    location ? `, scene set in ${location}` : '',
+    ', realistic photographic style, no text overlay, no title cards, no graphics',
+    ', ' + styleDef.suffix
+  ];
+
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 </script>
 </body>
 </html>
