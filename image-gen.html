@@ -1857,7 +1857,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineH) {
   return lines.length;
 }
 
-function drawBadge(ctx, text, x, y, fs, bg, fg) {
+function drawBadge(ctx, text, x, y, fs, bg,  fg) {
   const px=fs*.75, py=fs*.4, tw=ctx.measureText(text).width;
   const bw=tw+px*2, bh=fs+py*2, r=bh*.22;
   ctx.fillStyle=bg;
