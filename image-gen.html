@@ -439,9 +439,11 @@ textarea:focus, .txt-input:focus {
 .drag-btn:hover { background: rgba(255,255,255,.25); }
 .drag-btn.edit-btn { background: rgba(59,130,246,.3); }
 .drag-btn.edit-btn:hover { background: rgba(59,130,246,.6); }
-.drag-block-content { pointer-events: none; word-break: break-word; }
-.drag-block-edit { width: 100%; min-height: 40px; resize: none; background: rgba(0,0,0,.4); border: 1px solid rgba(59,130,246,.5); border-radius: 5px; color: #fff; font-family: "Inter",sans-serif; font-size: 12px; padding: 4px 7px; outline: none; margin-top: 3px; box-sizing: border-box; }
-.drag-block-edit:focus { border-color: var(--accent); }
+.drag-block-content { pointer-events: auto; cursor: pointer; word-break: break-word; transition: opacity .12s; }
+.drag-block-content:hover { opacity: .85; }
+.drag-block.editing .drag-block-content { pointer-events: none; }
+.drag-block-edit { width: 100%; min-height: 48px; resize: vertical; background: rgba(0,0,0,.55); border: 1px solid rgba(59,130,246,.6); border-radius: 5px; color: #fff; font-family: "Inter",sans-serif; font-size: 13px; padding: 6px 8px; outline: none; margin-top: 4px; box-sizing: border-box; user-select: text; pointer-events: all; }
+.drag-block-edit:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
 .drag-resize { position: absolute; bottom: 2px; right: 2px; width: 16px; height: 16px; cursor: se-resize; opacity: .5; transition: opacity .12s; display: flex; align-items: center; justify-content: center; color: var(--amber); font-size: 11px; z-index: 5; }
 .drag-resize:hover { opacity: 1; }
 .drag-hint { text-align: center; font-size: 11px; color: var(--text2); padding: 6px 0 2px; width: 100%; }
@@ -1287,8 +1289,22 @@ function enterDragMode() {
   _dragPositions = {};
 
   const cv       = document.getElementById('imgCanvas');
-  const imgUrl   = _lastRawUrls[_selectedPhotoIdx] || _lastRawUrls[0];
-  const theme    = POSTER_THEMES[document.getElementById('pt_theme').value] || POSTER_THEMES.dark;
+
+  // Build a local data-URL from the stored Image element so drag mode never
+  // re-fetches from Pollinations (which serves Cache-Control: no-store and
+  // will 402-rate-limit on a second request, leaving the container 0×0).
+  const _rawImg = _lastRawImgs[_selectedPhotoIdx] || _lastRawImgs[0];
+  let imgUrl;
+  if (_rawImg && _rawImg.naturalWidth) {
+    const _tc = document.createElement('canvas');
+    _tc.width = _rawImg.naturalWidth; _tc.height = _rawImg.naturalHeight;
+    _tc.getContext('2d').drawImage(_rawImg, 0, 0);
+    imgUrl = _tc.toDataURL('image/jpeg', 0.92);
+  } else {
+    imgUrl = _lastRawUrls[_selectedPhotoIdx] || _lastRawUrls[0];
+  }
+
+  const theme    = getEffectiveTheme();
   const themeName= document.getElementById('pt_theme').value;
 
   const headline    = document.getElementById('show_headline').checked    ? document.getElementById('pt_headline').value.trim()    : '';
@@ -1342,13 +1358,13 @@ function enterDragMode() {
                 <button class="drag-btn edit-btn" onclick="editDragBlock('${b.id}')" title="Editar texto">✏️</button>
               </div>
             </div>
-            <div class="drag-block-content" id="dcontent_${b.id}">${b.content}</div>
+            <div class="drag-block-content" id="dcontent_${b.id}" onclick="editDragBlock('${b.id}')" title="Clica para editar">${b.content}</div>
             <div class="drag-resize" id="dresize_${b.id}" title="Redimensionar">⊡</div>
           </div>`;
       }).join('')}
     </div>
     <div class="drag-hint">
-      🖱️ Arrasta pelo cabeçalho &nbsp;·&nbsp; ✏️ Edita &nbsp;·&nbsp; ⊡ Redimensiona &nbsp;·&nbsp;
+      🖱️ Arrasta pela barra &nbsp;·&nbsp; 🖊 Clica no texto para editar &nbsp;·&nbsp; ⊡ Redimensiona &nbsp;·&nbsp;
       Clica <strong style="color:var(--amber)">✅ Confirmar</strong> para gravar
     </div>`;
 
@@ -1394,6 +1410,7 @@ function initDraggable(el) {
   let dStartX, dStartY, dStartLeft, dStartTop;
   head.addEventListener('pointerdown', e => {
     if (e.target.closest('button')) return;   // don't drag when clicking edit btn
+    if (el.classList.contains('editing')) return;  // don't drag while editing text
     e.preventDefault(); e.stopPropagation();
     head.setPointerCapture(e.pointerId);
     el.classList.add('dragging');
@@ -1456,22 +1473,29 @@ function editDragBlock(id) {
   ta.className   = 'drag-block-edit';
   ta.id          = 'dedit_' + id;
   ta.value       = cur;
-  ta.placeholder = 'Editar texto…';
+  ta.placeholder = 'Editar texto… (Enter para guardar, Esc para cancelar)';
   ta.rows        = 3;
   content.style.display = 'none';
   content.after(ta);
+
+  // Prevent pointer events on the textarea from bubbling to the drag head,
+  // so the user can click/select text without accidentally starting a drag.
+  ta.addEventListener('pointerdown', e => e.stopPropagation());
+  ta.addEventListener('pointermove', e => e.stopPropagation());
+  ta.addEventListener('pointerup',   e => e.stopPropagation());
+  ta.addEventListener('click',       e => e.stopPropagation());
+
   ta.focus(); ta.select();
 
   const btn = block.querySelector('.edit-btn');
   if (btn) btn.textContent = '✓';
 
+  // Only save on explicit actions (Enter or ✓ button click) — no blur auto-save
+  // which was firing prematurely and wiping the textarea content.
   ta.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmEditBlock(id); }
     if (e.key === 'Escape') { cancelEditBlock(id); }
   });
-  ta.addEventListener('blur', () => setTimeout(() => {
-    if (block.classList.contains('editing')) confirmEditBlock(id);
-  }, 180));
 }
 
 function confirmEditBlock(id) {
@@ -1489,7 +1513,7 @@ function confirmEditBlock(id) {
   else if (id === 'badge')    document.getElementById('pt_category').value = newText;
 
   // Rebuild display HTML
-  const theme     = POSTER_THEMES[document.getElementById('pt_theme').value] || POSTER_THEMES.dark;
+  const theme     = getEffectiveTheme();
   const themeName = document.getElementById('pt_theme').value;
   let html = newText;
   if      (id === 'headline') html = `<span style="font-size:15px;font-weight:800;color:${theme.headlineColor};line-height:1.3">${newText}</span>`;
@@ -1537,7 +1561,7 @@ async function applyDragPositions() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
 
-      const theme    = POSTER_THEMES[document.getElementById('pt_theme').value] || POSTER_THEMES.dark;
+      const theme    = getEffectiveTheme();
       const themeName= document.getElementById('pt_theme').value;
       const scaleF   = { normal:1, large:1.2, xlarge:1.45, compact:.75 }[document.getElementById('pt_fontscale').value] || 1;
 
@@ -1800,6 +1824,26 @@ const POSTER_THEMES = {
   black_yellow: { panelBg:'#09090b',  badgeColor:'#fbbf24', headlineColor:'#fbbf24', subtitleColor:'#fde68a', pubColor:'#fbbf24', dateColor:'#d97706' },
 };
 
+// Returns the active theme merged with any custom colour overrides from the pickers
+function getEffectiveTheme() {
+  const name  = document.getElementById('pt_theme')?.value || 'dark';
+  const base  = POSTER_THEMES[name] || POSTER_THEMES.dark;
+  const panel = document.getElementById('pt_panel_color')?.value;
+  const badge = document.getElementById('pt_badge_color')?.value;
+  return { ...base, panelBg: panel || base.panelBg, badgeColor: badge || base.badgeColor };
+}
+
+// When theme preset changes: update the colour pickers to match, then recomposite
+function onThemeChange() {
+  const name  = document.getElementById('pt_theme').value;
+  const t     = POSTER_THEMES[name] || POSTER_THEMES.dark;
+  const pEl   = document.getElementById('pt_panel_color');
+  const bEl   = document.getElementById('pt_badge_color');
+  if (pEl) pEl.value = t.panelBg;
+  if (bEl) bEl.value = t.badgeColor;
+  scheduleRecomposite();
+}
+
 // ── Canvas helpers ────────────────────────────────────────────────────────────
 function wrapText(ctx, text, x, y, maxWidth, lineH) {
   const words = text.split(' ');
@@ -1919,7 +1963,7 @@ async function compositeNewsImage(imgOrUrl) {
   const date        = document.getElementById('pt_date').value.trim();
   const themeName   = document.getElementById('pt_theme').value;
   const layout      = document.getElementById('pt_position').value || 'rodape';
-  const theme       = POSTER_THEMES[themeName] || POSTER_THEMES.dark;
+  const theme       = getEffectiveTheme();
 
   try { await document.fonts.load('800 72px Inter'); await document.fonts.load('400 28px Inter'); } catch {}
 
